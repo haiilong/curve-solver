@@ -1,0 +1,11 @@
+{
+  "recommendations": [
+    "svelte.svelte-vscode",
+    "esbenp.prettier-vscode",
+    "usernamehw.errorlens",
+    "formulahendry.auto-rename-tag",
+    "christian-kohler.path-intellisense",
+    "gruntfuggly.todo-tree",
+    "wayou.vscode-todo-highlight"
+  ]
+} 
