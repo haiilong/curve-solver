@@ -6,10 +6,12 @@ on:
   pull_request:
     branches: [main]
 
+# Prevent multiple deployments from running simultaneously
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# Explicit permissions for security
 permissions:
   contents: read
   pages: write
@@ -26,7 +28,7 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 8
+          version: 10.11.1
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
