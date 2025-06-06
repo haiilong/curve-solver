@@ -8,7 +8,6 @@
     @load-sample-data="$emit('load-sample-data')"
     equationLabel="Linear"
     :minPoints="2"
-
   />
 </template>
 
@@ -34,6 +33,4 @@ const result = computed(() => {
   if (props.dataPoints.length === 0) return null;
   return solveEquation('linear', props.dataPoints);
 });
-
-
 </script>

@@ -47,8 +47,6 @@
       </template>
       <p v-else class="empty-message">Add data points to see the solution.</p>
     </section>
-
-
   </div>
 </template>
 
