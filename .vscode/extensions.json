@@ -1,6 +1,6 @@
 {
   "recommendations": [
-    "svelte.svelte-vscode",
+    "Vue.vscode-typescript-vue-plugin",
     "esbenp.prettier-vscode",
     "usernamehw.errorlens",
     "formulahendry.auto-rename-tag",

@@ -17,12 +17,11 @@
   "insertPragma": false,
   "requirePragma": false,
   "proseWrap": "preserve",
-  "plugins": ["prettier-plugin-svelte"],
   "overrides": [
     {
-      "files": "*.svelte",
+      "files": "*.vue",
       "options": {
-        "parser": "svelte"
+        "parser": "vue"
       }
     },
     {

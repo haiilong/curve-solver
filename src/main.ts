@@ -1,10 +1,5 @@
-import App from './App.svelte';
+import { createApp } from 'vue';
+import App from './App.vue';
+import './style.css';
 
-const app = new App({
-  target: document.body,
-  props: {
-    name: 'Curve Solver',
-  },
-});
-
-export default app;
+createApp(App).mount('#app');
