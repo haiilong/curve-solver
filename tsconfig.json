@@ -10,8 +10,10 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "isolatedModules": true,
-    "sourceMap": true
+    "sourceMap": true,
+    "declaration": false,
+    "inlineSourceMap": false
   },
   "include": ["src/**/*", "app.d.ts"],
   "exclude": ["node_modules", "public"]
-} 
+}

@@ -58,7 +58,7 @@
 </script>
 
 <main>
-  <h1>🔍 {name}</h1>
+  <h1>{name}</h1>
   <p>Interactive Curve Fitting Tool</p>
 
   <section class="input-section">
