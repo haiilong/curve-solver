@@ -1,22 +1,38 @@
 <template>
-  <section class="tabs-section">
-    <div class="tabs-container">
-      <div class="tabs">
-        <button
-          v-for="tab in tabs"
-          :key="tab.id"
-          :class="['tab', { active: activeTab === tab.id }]"
-          type="button"
-          @click="$emit('tab-change', tab.id)"
-        >
-          {{ tab.label }}
-        </button>
-      </div>
+  <div class="tab-container">
+    <div class="tab-row">
+      <button
+        v-for="tab in exactTabs"
+        :key="tab.id"
+        :class="['tab-button', { active: activeTab === tab.id }]"
+        @click="$emit('tab-change', tab.id)"
+      >
+        <div class="tab-content">
+          <span class="tab-type">{{ tab.label.split('\n')[0] }}</span>
+          <span class="tab-equation">{{ tab.label.split('\n')[1] }}</span>
+        </div>
+      </button>
     </div>
-  </section>
+    <div class="tab-row">
+      <button
+        v-for="tab in approximationTabs"
+        :key="tab.id"
+        :class="['tab-button', { active: activeTab === tab.id }]"
+        @click="$emit('tab-change', tab.id)"
+      >
+        <div class="tab-content">
+          <span class="tab-type">{{ tab.label.split('\n')[0] }}</span>
+          <span class="tab-equation">{{ tab.label.split('\n')[1] }}</span>
+        </div>
+      </button>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue';
+import { ExactEquationType, ApproximationEquationType } from '../solvers.ts';
+
 interface Tab {
   id: string;
   label: string;
@@ -27,76 +43,109 @@ interface Props {
   activeTab: string;
 }
 
-defineProps<Props>();
-
+const props = defineProps<Props>();
 defineEmits<{
-  'tab-change': [tabId: string];
+  (e: 'tab-change', tabId: string): void;
 }>();
+
+const exactTabs = computed(() => props.tabs.filter(tab => 
+  Object.values(ExactEquationType).includes(tab.id as ExactEquationType)
+));
+
+const approximationTabs = computed(() => props.tabs.filter(tab => 
+  Object.values(ApproximationEquationType).includes(tab.id as ApproximationEquationType)
+));
 </script>
 
 <style scoped>
-.tabs-section {
-  margin-bottom: 20px;
-}
-
-.tabs-container {
-  background: #fff;
-  border-radius: 8px;
-  padding: 10px;
-  border: 1px solid #ddd;
-}
-
-.tabs {
+.tab-container {
+  margin-bottom: 30px;
   display: flex;
-  gap: 10px;
+  flex-direction: column;
+  gap: 18px;
+  align-items: center;
 }
 
-.tab {
-  padding: 12px 20px;
+.tab-row {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  gap: 18px;
+  margin-bottom: 0;
+}
+
+.tab-button {
   background: #f8f9fa;
   border: 2px solid #e9ecef;
   border-radius: 8px;
+  padding: 16px 28px;
   cursor: pointer;
-  font-size: 14px;
-  font-weight: 600;
-  transition: all 0.3s ease;
-  flex: 1;
-  min-width: 0;
+  transition: all 0.2s ease;
+  min-width: 170px;
   text-align: center;
-  color: #495057;
+  font-size: 1em;
+  font-family: inherit;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
-.tab:hover {
+.tab-button:hover {
   background: #e9ecef;
-  transform: translateY(-1px);
+  border-color: #dee2e6;
 }
 
-.tab.active {
-  background: #3498db;
+.tab-button.active {
+  background: #2c3e50;
+  border-color: #2c3e50;
   color: white;
-  border-color: #3498db;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(52, 152, 219, 0.3);
 }
 
-@media (max-width: 768px) {
-  .tabs {
+.tab-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: center;
+}
+
+.tab-type {
+  font-weight: 600;
+  font-size: 1.08em;
+}
+
+.tab-equation {
+  font-family: monospace;
+  font-size: 0.97em;
+  opacity: 0.92;
+}
+
+.tab-button.active .tab-equation {
+  opacity: 1;
+}
+
+@media (max-width: 1100px) {
+  .tab-row {
     flex-wrap: wrap;
-    gap: 5px;
+    gap: 10px;
   }
-
-  .tab {
-    font-size: 12px;
-    padding: 8px 12px;
-    flex: 1 1 calc(50% - 2.5px);
-    min-width: calc(50% - 2.5px);
+  .tab-button {
+    min-width: 120px;
+    padding: 12px 10px;
+    font-size: 0.95em;
   }
 }
 
-@media (max-width: 480px) {
-  .tab {
-    flex: 1 1 100%;
-    min-width: 100%;
+@media (max-width: 700px) {
+  .tab-row {
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+  .tab-button {
+    width: 100%;
+    min-width: 0;
+    padding: 10px 0;
+    font-size: 0.93em;
   }
 }
 </style>

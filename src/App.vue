@@ -1,117 +1,103 @@
 <template>
-  <main>
-    <h1>{{ name }}</h1>
-    <p>Advanced Curve Fitting Tool with Multiple Equation Types</p>
-
+  <main class="main-container">
+    <h1>Curve Solver</h1>
     <TabContainer :tabs="tabs" :activeTab="selectedEquationType" @tab-change="handleTabChange" />
-
     <component
       :is="currentEquationComponent"
       :dataPoints="dataPoints"
+      :result="currentResult"
+      :equationLabel="currentEquationLabel"
+      :requiredPoints="requiredPoints"
+      :useFractions="useFractions"
+      @update-points="updatePoints"
       @add-point="addPoint"
       @remove-point="removePoint"
       @clear-points="clearPoints"
+      @toggle-fractions="toggleFractions"
       @load-sample-data="loadSampleData"
     />
   </main>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
 import TabContainer from './components/TabContainer.vue';
-import CircleEquation from './components/equations/CircleEquation.vue';
-import CubicEquation from './components/equations/CubicEquation.vue';
-import EllipseEquation from './components/equations/EllipseEquation.vue';
-import LinearEquation from './components/equations/LinearEquation.vue';
-import QuadraticEquation from './components/equations/QuadraticEquation.vue';
-import { type DataPoint, type EquationType } from './solvers.js';
+import ExactEquation from './components/ExactEquation.vue';
+import ApproximationEquation from './components/ApproximationEquation.vue';
+import { type DataPoint, type EquationType, ExactEquationType, ApproximationEquationType, solveEquation } from './solvers.ts';
+import { ref, computed } from 'vue';
 
-interface Props {
-  name?: string;
-}
-
-const { name = 'Curve Solver' } = defineProps<Props>();
-
-// Component mapping for dynamic component rendering
-const equationComponents = {
-  linear: LinearEquation,
-  quadratic: QuadraticEquation,
-  cubic: CubicEquation,
-  circle: CircleEquation,
-  ellipse: EllipseEquation,
-} as const;
-
-// Sample data for each equation type
-const sampleDataSets: Record<EquationType, DataPoint[]> = {
-  linear: [
-    { x: 0, y: 1 },
-    { x: 1, y: 3 },
-    { x: 2, y: 5 },
-    { x: 3, y: 7 },
-  ],
-  quadratic: [
-    { x: -2, y: 4 },
-    { x: -1, y: 1 },
-    { x: 0, y: 0 },
-    { x: 1, y: 1 },
-    { x: 2, y: 4 },
-  ],
-  cubic: [
-    { x: -2, y: -8 },
-    { x: -1, y: -1 },
-    { x: 0, y: 0 },
-    { x: 1, y: 1 },
-    { x: 2, y: 8 },
-  ],
-  circle: [
-    { x: 0, y: 2 },
-    { x: 2, y: 0 },
-    { x: 0, y: -2 },
-    { x: -2, y: 0 },
-  ],
-  ellipse: [
-    { x: 0, y: 3 },
-    { x: 2, y: 0 },
-    { x: 0, y: -3 },
-    { x: -2, y: 0 },
-    { x: 1.5, y: 2.1 },
-  ],
-};
-
-// Tab configuration
 const tabs = [
-  { id: 'linear', label: 'Linear (y = ax + b)' },
-  { id: 'quadratic', label: 'Quadratic (y = ax² + bx + c)' },
-  { id: 'cubic', label: 'Cubic (y = ax³ + bx² + cx + d)' },
-  { id: 'circle', label: 'Circle ((x-h)² + (y-k)² = r²)' },
-  { id: 'ellipse', label: 'Ellipse (axis-aligned)' },
+  { id: ExactEquationType.LINEAR, label: 'Linear\ny = ax + b' },
+  { id: ExactEquationType.QUADRATIC, label: 'Quadratic\ny = ax² + bx + c' },
+  { id: ExactEquationType.CUBIC, label: 'Cubic\ny = ax³ + bx² + cx + d' },
+  { id: ExactEquationType.CIRCLE, label: 'Circle\n(x-h)² + (y-k)² = r²' },
+  { id: ExactEquationType.ELLIPSE, label: 'Ellipse\n(x-h)²/a² + (y-k)²/b² = 1' },
+  { id: ApproximationEquationType.SINE, label: 'Sine\ny = a * sin(bx + c) + d' },
+  { id: ApproximationEquationType.LOG, label: 'Logarithmic\ny = a * ln(bx + c) + d' },
+  { id: ApproximationEquationType.EXPONENTIAL, label: 'Exponential\ny = a * e^(bx + c) + d' },
 ];
 
-// Reactive state
-const dataPoints = ref<DataPoint[]>([
-  { x: 0, y: 0 },
-  { x: 1, y: 1 },
-  { x: 2, y: 4 },
-  { x: 3, y: 9 },
-  { x: 4, y: 16 },
-]);
+const sampleDataSets: Record<EquationType, DataPoint[]> = {
+  [ExactEquationType.LINEAR]: [ { x: 0, y: 1 }, { x: 1, y: 3 } ],
+  [ExactEquationType.QUADRATIC]: [ { x: -2, y: 4 }, { x: -1, y: 1 }, { x: 0, y: 0 } ],
+  [ExactEquationType.CUBIC]: [ { x: -2, y: -8 }, { x: -1, y: -1 }, { x: 0, y: 0 }, { x: 1, y: 1 } ],
+  [ExactEquationType.CIRCLE]: [ { x: 0, y: 2 }, { x: 2, y: 0 }, { x: 0, y: -2 } ],
+  [ExactEquationType.ELLIPSE]: [ { x: 0, y: 3 }, { x: 2, y: 0 }, { x: 0, y: -3 }, { x: -2, y: 0 } ],
+  [ApproximationEquationType.SINE]: [ { x: 0, y: 0 }, { x: Math.PI / 2, y: 1 }, { x: Math.PI, y: 0 }, { x: 3 * Math.PI / 2, y: -1 } ],
+  [ApproximationEquationType.LOG]: [ { x: 1, y: 0 }, { x: 2, y: 0.693 }, { x: 3, y: 1.099 }, { x: 4, y: 1.386 } ],
+  [ApproximationEquationType.EXPONENTIAL]: [ { x: 0, y: 1 }, { x: 1, y: 2.718 }, { x: 2, y: 7.389 }, { x: 3, y: 20.086 } ],
+};
 
-const selectedEquationType = ref<EquationType>('linear');
+const requiredPointsMap: Record<EquationType, number> = {
+  [ExactEquationType.LINEAR]: 2,
+  [ExactEquationType.QUADRATIC]: 3,
+  [ExactEquationType.CUBIC]: 4,
+  [ExactEquationType.CIRCLE]: 3,
+  [ExactEquationType.ELLIPSE]: 4,
+  [ApproximationEquationType.SINE]: 4,
+  [ApproximationEquationType.LOG]: 3,
+  [ApproximationEquationType.EXPONENTIAL]: 3,
+};
 
-// Computed properties
-const currentEquationComponent = computed(() => equationComponents[selectedEquationType.value]);
+const dataPoints = ref<DataPoint[]>([]);
+const selectedEquationType = ref<EquationType>(ExactEquationType.LINEAR);
+const useFractions = ref<boolean>(false);
 
-// Event handlers
+const isExactEquation = computed(() => Object.values(ExactEquationType).includes(selectedEquationType.value as ExactEquationType));
+const currentEquationComponent = computed(() => isExactEquation.value ? ExactEquation : ApproximationEquation);
+const currentResult = computed(() => {
+  const result = solveEquation(selectedEquationType.value, dataPoints.value, useFractions.value);
+  if (result.error) {
+    return `Error: ${result.error}`;
+  }
+  return result.equation || '';
+});
+const currentEquationLabel = computed(() => tabs.find(tab => tab.id === selectedEquationType.value)?.label || '');
+const requiredPoints = computed(() => requiredPointsMap[selectedEquationType.value]);
+
+function updatePoints(points: DataPoint[]): void {
+  dataPoints.value = [...points];
+}
+
 function addPoint(x: number, y: number): void {
-  dataPoints.value.push({ x, y });
+  if (isExactEquation.value) {
+    const index = dataPoints.value.length;
+    if (index < requiredPoints.value) {
+      dataPoints.value[index] = { x, y };
+    }
+  } else {
+    dataPoints.value.push({ x, y });
+  }
 }
 
 function removePoint(index: number): void {
-  dataPoints.value.splice(index, 1);
+  if (!isExactEquation.value) {
+    dataPoints.value.splice(index, 1);
+  }
 }
 
 function clearPoints(): void {
-  dataPoints.value.length = 0;
+  dataPoints.value = [];
 }
 
 function loadSampleData(): void {
@@ -120,38 +106,29 @@ function loadSampleData(): void {
 
 function handleTabChange(tabId: string): void {
   selectedEquationType.value = tabId as EquationType;
+  clearPoints();
+}
+
+function toggleFractions(): void {
+  useFractions.value = !useFractions.value;
 }
 </script>
 
 <style scoped>
-main {
-  max-width: 1200px;
+.main-container {
+  max-width: 1400px;
   margin: 0 auto;
+  padding: 25px 30px 30px 30px;
   background: white;
-  border-radius: 15px;
-  padding: 30px;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+  border-radius: 20px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+  border: 3px solid #34495e;
 }
 
 h1 {
   text-align: center;
-  margin-bottom: 10px;
   color: #2c3e50;
-  font-size: 2.5em;
-}
-
-p {
-  text-align: center;
-  color: #7f8c8d;
   margin-bottom: 30px;
-  font-size: 1.1em;
-}
-
-@media (max-width: 768px) {
-  main {
-    margin: 0;
-    border-radius: 0;
-    padding: 20px;
-  }
+  font-size: 2.8em;
 }
 </style>
