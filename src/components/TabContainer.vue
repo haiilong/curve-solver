@@ -126,8 +126,6 @@ const approximationTabs = computed(() =>
   opacity: 1;
 }
 
-
-
 @media (max-width: 1100px) {
   .tab-row {
     flex-wrap: wrap;

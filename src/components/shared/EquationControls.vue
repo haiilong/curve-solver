@@ -18,13 +18,11 @@
       <h3>Load Points</h3>
       <p class="dialog-instructions">
         Enter points in the format: x,y (one point per line)
-        <br>Example :
-        <br>0,1
-        <br>1,4
+        <br />Example : <br />0,1 <br />1,4
       </p>
-      <textarea 
-        v-model="pointsText" 
-        class="points-textarea" 
+      <textarea
+        v-model="pointsText"
+        class="points-textarea"
         placeholder="0,1&#10;1,4"
         rows="6"
       ></textarea>
@@ -48,7 +46,7 @@ defineProps<Props>();
 const emit = defineEmits<{
   'toggle-fractions': [];
   'clear-points': [];
-  'load-points': [points: Array<{x: number, y: number}>];
+  'load-points': [points: Array<{ x: number; y: number }>];
 }>();
 
 const showDialog = ref(false);
@@ -71,28 +69,28 @@ function loadPoints() {
     return;
   }
 
-  const points: Array<{x: number, y: number}> = [];
+  const points: Array<{ x: number; y: number }> = [];
   const lines = text.split('\n');
-  
+
   for (const line of lines) {
     const trimmedLine = line.trim();
     if (!trimmedLine) continue;
-    
+
     const parts = trimmedLine.split(',');
     if (parts.length !== 2) continue;
-    
+
     const x = parseFloat(parts[0].trim());
     const y = parseFloat(parts[1].trim());
-    
+
     if (!isNaN(x) && !isNaN(y)) {
       points.push({ x, y });
     }
   }
-  
+
   if (points.length > 0) {
     emit('load-points', points);
   }
-  
+
   closeDialog();
 }
 </script>

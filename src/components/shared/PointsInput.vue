@@ -4,14 +4,16 @@
       <div class="title-section">
         <h2>{{ equationLabel.split('\n')[0] }}</h2>
         <div v-if="equationTooltip" class="tooltip-container">
-          <button 
+          <button
             class="help-button"
             @click="showTooltip = !showTooltip"
             @blur="handleBlur"
             ref="helpButtonRef"
-          >?</button>
-          <div 
-            v-if="showTooltip" 
+          >
+            ?
+          </button>
+          <div
+            v-if="showTooltip"
             class="tooltip-popup"
             @mouseenter="keepTooltipOpen = true"
             @mouseleave="handleTooltipMouseLeave"
@@ -60,13 +62,21 @@
         <div v-for="(point, index) in dataPoints" :key="index" class="point-item">
           <div class="point-header">
             <span class="point-label">Point {{ index + 1 }}:</span>
-            <button @click="$emit('remove-point', index)" class="remove-button" title="Remove point">×</button>
+            <button
+              @click="$emit('remove-point', index)"
+              class="remove-button"
+              title="Remove point"
+            >
+              ×
+            </button>
           </div>
           <div class="point-display">
-            <span class="point-coords">({{ formatCoordinate(point?.x || 0) }}, {{ formatCoordinate(point?.y || 0) }})</span>
+            <span class="point-coords"
+              >({{ formatCoordinate(point?.x || 0) }}, {{ formatCoordinate(point?.y || 0) }})</span
+            >
           </div>
         </div>
-        
+
         <div class="point-item add-point">
           <div class="point-header">
             <span class="point-label">New Point:</span>
@@ -89,8 +99,6 @@
             />
           </div>
         </div>
-
-
       </template>
     </div>
   </div>
@@ -195,7 +203,7 @@ function formatCoordinate(value: number): string {
   if (Math.abs(value - Math.round(value)) < 0.0001) {
     return Math.round(value).toString();
   }
-  
+
   const formatted = parseFloat(value.toFixed(3)).toString();
   return formatted;
 }
@@ -455,8 +463,6 @@ function handleTooltipMouseLeave() {
 .remove-button:hover {
   background: #c0392b;
 }
-
-
 
 @media (max-width: 768px) {
   .points-list:has(.point-item:not(.add-point)),

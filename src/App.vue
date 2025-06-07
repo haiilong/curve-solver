@@ -41,20 +41,23 @@ const tabs = [
   { id: ExactEquationType.CUBIC, label: 'Cubic\ny = ax³ + bx² + cx + d' },
   { id: ExactEquationType.CIRCLE, label: 'Circle\n(x-h)² + (y-k)² = r²' },
   { id: ExactEquationType.ELLIPSE, label: 'Ellipse (axis-aligned)\n(x-h)²/a² + (y-k)²/b² = 1' },
-  { 
-    id: ApproximationEquationType.SINE, 
+  {
+    id: ApproximationEquationType.SINE,
     label: 'Sine\ny = a * sin(bx + c) + d',
-    tooltip: 'Uses Levenberg-Marquardt optimization with smart initialization:\n FFT-like frequency estimation\n 16 phase shift attempts (π/4 intervals)\n Amplitude & frequency harmonic analysis\n Early termination on excellent fits (R² > 99.9%)'
+    tooltip:
+      'Uses Levenberg-Marquardt optimization with smart initialization:\n FFT-like frequency estimation\n 16 phase shift attempts (π/4 intervals)\n Amplitude & frequency harmonic analysis\n Early termination on excellent fits (R² > 99.9%)',
   },
-  { 
-    id: ApproximationEquationType.LOG, 
+  {
+    id: ApproximationEquationType.LOG,
     label: 'Logarithmic\ny = a * ln(bx + c) + d',
-    tooltip: 'Uses Levenberg-Marquardt optimization with log-linear regression:\n Initial estimates from log-transformed data\n Multiple scaling and offset strategies\n Validates positive arguments for ln()\n Adaptive damping for stable convergence\n Prioritizes most promising parameter combinations\n Early termination on excellent fits (R² > 99.9%)'
+    tooltip:
+      'Uses Levenberg-Marquardt optimization with log-linear regression:\n Initial estimates from log-transformed data\n Multiple scaling and offset strategies\n Validates positive arguments for ln()\n Adaptive damping for stable convergence\n Prioritizes most promising parameter combinations\n Early termination on excellent fits (R² > 99.9%)',
   },
-  { 
-    id: ApproximationEquationType.EXPONENTIAL, 
+  {
+    id: ApproximationEquationType.EXPONENTIAL,
     label: 'Exponential\ny = a * e^(bx + c) + d',
-    tooltip: 'Uses Levenberg-Marquardt optimization with dual strategies:\n Strategy 1: Log-linear fit for all positive y values\n Strategy 2: Offset estimation for complex data\n Growth vs decay pattern recognition\n Numerical stability validation\n Multiple heuristic initializations for robustness'
+    tooltip:
+      'Uses Levenberg-Marquardt optimization with dual strategies:\n Strategy 1: Log-linear fit for all positive y values\n Strategy 2: Offset estimation for complex data\n Growth vs decay pattern recognition\n Numerical stability validation\n Multiple heuristic initializations for robustness',
   },
 ];
 
@@ -90,16 +93,16 @@ const currentResult = computed(() => {
   } else {
     if (!approximationResult.value) {
       const minPoints = requiredPoints.value;
-      return dataPoints.value.length >= minPoints 
+      return dataPoints.value.length >= minPoints
         ? `Add points and click "Solve Equation" to get the result`
         : `Add at least ${minPoints} points to solve equation`;
     }
-    
+
     const result = approximationResult.value;
     if (result.error) {
       return `Error: ${result.error}`;
     }
-    
+
     let displayResult = result.equation || '';
     if (result.rSquared !== undefined) {
       const rSquaredPercent = (result.rSquared * 100).toFixed(1);
@@ -155,7 +158,7 @@ function toggleFractions(): void {
 
 function solveApproximationEquation(): void {
   if (isExactEquation.value) return;
-  
+
   const result = solveEquation(selectedEquationType.value, dataPoints.value, useFractions.value);
   approximationResult.value = result;
 }
