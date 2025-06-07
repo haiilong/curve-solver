@@ -36,5 +36,3 @@ defineEmits<{
   'toggle-fractions': [];
 }>();
 </script>
-
- 

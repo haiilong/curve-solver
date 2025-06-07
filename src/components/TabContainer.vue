@@ -48,13 +48,15 @@ defineEmits<{
   (e: 'tab-change', tabId: string): void;
 }>();
 
-const exactTabs = computed(() => props.tabs.filter(tab => 
-  Object.values(ExactEquationType).includes(tab.id as ExactEquationType)
-));
+const exactTabs = computed(() =>
+  props.tabs.filter(tab => Object.values(ExactEquationType).includes(tab.id as ExactEquationType))
+);
 
-const approximationTabs = computed(() => props.tabs.filter(tab => 
-  Object.values(ApproximationEquationType).includes(tab.id as ApproximationEquationType)
-));
+const approximationTabs = computed(() =>
+  props.tabs.filter(tab =>
+    Object.values(ApproximationEquationType).includes(tab.id as ApproximationEquationType)
+  )
+);
 </script>
 
 <style scoped>

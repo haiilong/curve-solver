@@ -15,14 +15,14 @@
           <span class="point-label">Point {{ i }}:</span>
           <div class="point-inputs">
             <input
-              v-model="inputPoints[i-1].x"
+              v-model="inputPoints[i - 1].x"
               type="number"
               step="any"
               placeholder="x"
               @input="updatePoints"
             />
             <input
-              v-model="inputPoints[i-1].y"
+              v-model="inputPoints[i - 1].y"
               type="number"
               step="any"
               placeholder="y"
@@ -65,7 +65,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed, nextTick } from 'vue';
+import { ref, watch, nextTick } from 'vue';
 import type { DataPoint } from '../../solvers.ts';
 
 interface Props {
@@ -77,7 +77,7 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), {
   requiredPoints: 0,
-  isFixedPoints: false
+  isFixedPoints: false,
 });
 
 const emit = defineEmits<{
@@ -87,47 +87,55 @@ const emit = defineEmits<{
 }>();
 
 const inputPoints = ref<Array<{ x: string; y: string }>>(
-  Array(props.requiredPoints || 0).fill(null).map(() => ({ x: '', y: '' }))
+  Array(props.requiredPoints || 0)
+    .fill(null)
+    .map(() => ({ x: '', y: '' }))
 );
 
 const newPoint = ref({ x: '', y: '' });
 const isUpdating = ref(false);
 
 // Watch for external dataPoints changes (for fixed points mode)
-watch(() => props.dataPoints, (newPoints) => {
-  if (props.isFixedPoints && !isUpdating.value) {
-    inputPoints.value = Array(props.requiredPoints).fill(null).map((_, i) => ({
-      x: newPoints[i]?.x.toString() || '',
-      y: newPoints[i]?.y.toString() || ''
-    }));
-  }
-}, { immediate: true });
+watch(
+  () => props.dataPoints,
+  newPoints => {
+    if (props.isFixedPoints && !isUpdating.value) {
+      inputPoints.value = Array(props.requiredPoints)
+        .fill(null)
+        .map((_, i) => ({
+          x: newPoints[i]?.x.toString() || '',
+          y: newPoints[i]?.y.toString() || '',
+        }));
+    }
+  },
+  { immediate: true }
+);
 
 let updateTimeout: number | null = null;
 
 function updatePoints() {
   if (!props.isFixedPoints) return;
-  
+
   if (updateTimeout) {
     clearTimeout(updateTimeout);
   }
-  
+
   updateTimeout = setTimeout(() => {
     isUpdating.value = true;
-    
+
     const validPoints: DataPoint[] = [];
-    
+
     for (let i = 0; i < inputPoints.value.length; i++) {
       const x = parseFloat(inputPoints.value[i].x);
       const y = parseFloat(inputPoints.value[i].y);
-      
+
       if (!isNaN(x) && !isNaN(y)) {
         validPoints.push({ x, y });
       }
     }
-    
+
     emit('update-points', validPoints);
-    
+
     nextTick(() => {
       isUpdating.value = false;
     });
@@ -136,7 +144,7 @@ function updatePoints() {
 
 function addPoint() {
   if (props.isFixedPoints) return;
-  
+
   const x = parseFloat(newPoint.value.x);
   const y = parseFloat(newPoint.value.y);
 
@@ -267,4 +275,4 @@ input:focus {
     min-width: 0;
   }
 }
-</style> 
+</style>

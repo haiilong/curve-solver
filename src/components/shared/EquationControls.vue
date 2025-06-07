@@ -3,11 +3,7 @@
     <div class="toggle-container">
       <span class="toggle-label">Fractions</span>
       <label class="toggle-switch">
-        <input 
-          type="checkbox" 
-          :checked="useFractions" 
-          @change="$emit('toggle-fractions')"
-        >
+        <input type="checkbox" :checked="useFractions" @change="$emit('toggle-fractions')" />
         <span class="slider"></span>
       </label>
     </div>
@@ -68,30 +64,30 @@ defineEmits<{
   right: 0;
   bottom: 0;
   background-color: #ccc;
-  -webkit-transition: .4s;
-  transition: .4s;
+  -webkit-transition: 0.4s;
+  transition: 0.4s;
   border-radius: 25px;
 }
 
 .slider:before {
   position: absolute;
-  content: "";
+  content: '';
   height: 21px;
   width: 21px;
   left: 2px;
   bottom: 2px;
   background-color: white;
-  -webkit-transition: .4s;
-  transition: .4s;
+  -webkit-transition: 0.4s;
+  transition: 0.4s;
   border-radius: 50%;
 }
 
 input:checked + .slider {
-  background-color: #2196F3;
+  background-color: #2196f3;
 }
 
 input:focus + .slider {
-  box-shadow: 0 0 1px #2196F3;
+  box-shadow: 0 0 1px #2196f3;
 }
 
 input:checked + .slider:before {
@@ -114,4 +110,4 @@ input:checked + .slider:before {
 .action-button:hover {
   background: #34495e;
 }
-</style> 
+</style>

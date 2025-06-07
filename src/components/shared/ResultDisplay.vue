@@ -14,7 +14,7 @@ interface Props {
 }
 
 withDefaults(defineProps<Props>(), {
-  fallbackMessage: 'Add points to solve equation'
+  fallbackMessage: 'Add points to solve equation',
 });
 </script>
 
@@ -58,4 +58,4 @@ withDefaults(defineProps<Props>(), {
   font-family: system-ui, sans-serif;
   font-style: normal;
 }
-</style> 
+</style>

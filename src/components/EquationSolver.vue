@@ -9,24 +9,25 @@
       @add-point="$emit('add-point')"
       @remove-point="$emit('remove-point', $event)"
     />
-    
+
     <EquationControls
       :useFractions="useFractions"
       @toggle-fractions="$emit('toggle-fractions')"
       @clear-points="$emit('clear-points')"
     />
-    
+
     <ResultDisplay
       :result="result"
-      :fallbackMessage="isExactEquation ? 
-        `Add ${requiredPoints} points to solve equation` : 
-        `Add at least ${requiredPoints} points to solve equation`"
+      :fallbackMessage="
+        isExactEquation
+          ? `Add ${requiredPoints} points to solve equation`
+          : `Add at least ${requiredPoints} points to solve equation`
+      "
     />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
 import type { DataPoint } from '../solvers.ts';
 import PointsInput from './shared/PointsInput.vue';
 import EquationControls from './shared/EquationControls.vue';
@@ -41,8 +42,8 @@ interface Props {
   isExactEquation?: boolean;
 }
 
-const props = withDefaults(defineProps<Props>(), {
-  isExactEquation: false
+withDefaults(defineProps<Props>(), {
+  isExactEquation: false,
 });
 
 defineEmits<{
@@ -62,4 +63,4 @@ defineEmits<{
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   border: 1px solid #ddd;
 }
-</style> 
+</style>

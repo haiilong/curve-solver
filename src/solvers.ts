@@ -31,16 +31,25 @@ export const EquationType = {
   ...ApproximationEquationType,
 } as const;
 
-export type ExactEquationType = typeof ExactEquationType[keyof typeof ExactEquationType];
-export type ApproximationEquationType = typeof ApproximationEquationType[keyof typeof ApproximationEquationType];
+export type ExactEquationType = (typeof ExactEquationType)[keyof typeof ExactEquationType];
+export type ApproximationEquationType =
+  (typeof ApproximationEquationType)[keyof typeof ApproximationEquationType];
 export type EquationType = ExactEquationType | ApproximationEquationType;
 
-export function solveEquation(equationType: EquationType, points: DataPoint[], useFractions: boolean = true): SolverResult {
+export function solveEquation(
+  equationType: EquationType,
+  points: DataPoint[],
+  useFractions: boolean = true
+): SolverResult {
   try {
     if (Object.values(ExactEquationType).includes(equationType as ExactEquationType)) {
       return solveExactEquation(equationType as ExactEquationType, points, useFractions);
     } else {
-      return solveApproximationEquation(equationType as ApproximationEquationType, points, useFractions);
+      return solveApproximationEquation(
+        equationType as ApproximationEquationType,
+        points,
+        useFractions
+      );
     }
   } catch (e) {
     return {
@@ -51,7 +60,11 @@ export function solveEquation(equationType: EquationType, points: DataPoint[], u
   }
 }
 
-function solveExactEquation(equationType: ExactEquationType, points: DataPoint[], useFractions: boolean = true): SolverResult {
+function solveExactEquation(
+  equationType: ExactEquationType,
+  points: DataPoint[],
+  useFractions: boolean = true
+): SolverResult {
   // Check for duplicate points in exact equations
   const duplicates = findDuplicatePoints(points);
   if (duplicates.length > 0) {
@@ -81,7 +94,7 @@ function solveExactEquation(equationType: ExactEquationType, points: DataPoint[]
 function findDuplicatePoints(points: DataPoint[]): DataPoint[] {
   const seen = new Set<string>();
   const duplicates: DataPoint[] = [];
-  
+
   for (const point of points) {
     const key = `${point.x},${point.y}`;
     if (seen.has(key)) {
@@ -90,7 +103,7 @@ function findDuplicatePoints(points: DataPoint[]): DataPoint[] {
       seen.add(key);
     }
   }
-  
+
   return duplicates;
 }
 
@@ -125,7 +138,7 @@ function solveLinear(points: DataPoint[], useFractions: boolean = true): SolverR
   const intercept = y1 - slope * x1;
 
   const coefficients = { a: slope, b: intercept };
-  
+
   if (!validateCoefficients(coefficients)) {
     return {
       coefficients: {},
@@ -171,7 +184,7 @@ function solveQuadratic(points: DataPoint[], useFractions: boolean = true): Solv
     const c = solution[2][0];
 
     const coefficients = { a, b, c };
-    
+
     if (!validateCoefficients(coefficients)) {
       return {
         coefficients: {},
@@ -185,7 +198,11 @@ function solveQuadratic(points: DataPoint[], useFractions: boolean = true): Solv
       equation: `y = ${formatCoefficient(a, false, useFractions)}x² ${formatCoefficient(b, true, useFractions)}x ${formatCoefficient(c, true, useFractions)}`,
     };
   } catch (e) {
-    return { coefficients: {}, equation: '', error: 'Unable to solve quadratic equation - points may be collinear' };
+    return {
+      coefficients: {},
+      equation: '',
+      error: 'Unable to solve quadratic equation - points may be collinear',
+    };
   }
 }
 
@@ -224,7 +241,7 @@ function solveCubic(points: DataPoint[], useFractions: boolean = true): SolverRe
     const d = solution[3][0];
 
     const coefficients = { a, b, c, d };
-    
+
     if (!validateCoefficients(coefficients)) {
       return {
         coefficients: {},
@@ -238,7 +255,11 @@ function solveCubic(points: DataPoint[], useFractions: boolean = true): SolverRe
       equation: `y = ${formatCoefficient(a, false, useFractions)}x³ ${formatCoefficient(b, true, useFractions)}x² ${formatCoefficient(c, true, useFractions)}x ${formatCoefficient(d, true, useFractions)}`,
     };
   } catch (e) {
-    return { coefficients: {}, equation: '', error: 'Unable to solve cubic equation - points may be invalid' };
+    return {
+      coefficients: {},
+      equation: '',
+      error: 'Unable to solve cubic equation - points may be invalid',
+    };
   }
 }
 
@@ -264,11 +285,7 @@ function solveCircle(points: DataPoint[], useFractions: boolean = true): SolverR
     [x2, y2, 1],
     [x3, y3, 1],
   ];
-  const B = [
-    -(x1 ** 2 + y1 ** 2),
-    -(x2 ** 2 + y2 ** 2),
-    -(x3 ** 2 + y3 ** 2),
-  ];
+  const B = [-(x1 ** 2 + y1 ** 2), -(x2 ** 2 + y2 ** 2), -(x3 ** 2 + y3 ** 2)];
 
   try {
     const solution = math.lusolve(A, B) as number[][];
@@ -278,7 +295,7 @@ function solveCircle(points: DataPoint[], useFractions: boolean = true): SolverR
     const h = -D / 2;
     const k = -E / 2;
     const rSquared = h ** 2 + k ** 2 - F;
-    
+
     if (rSquared <= 0) {
       return {
         coefficients: {},
@@ -286,10 +303,10 @@ function solveCircle(points: DataPoint[], useFractions: boolean = true): SolverR
         error: 'Points do not form a valid circle - points may be collinear',
       };
     }
-    
+
     const r = Math.sqrt(rSquared);
     const coefficients = { h, k, r };
-    
+
     if (!validateCoefficients(coefficients)) {
       return {
         coefficients: {},
@@ -303,7 +320,11 @@ function solveCircle(points: DataPoint[], useFractions: boolean = true): SolverR
       equation: `(x ${formatCoefficient(-h, true, useFractions)})² + (y ${formatCoefficient(-k, true, useFractions)})² = ${formatCoefficient(r, false, useFractions)}²`,
     };
   } catch (e) {
-    return { coefficients: {}, equation: '', error: 'Unable to solve circle equation - points may be collinear' };
+    return {
+      coefficients: {},
+      equation: '',
+      error: 'Unable to solve circle equation - points may be collinear',
+    };
   }
 }
 
@@ -340,7 +361,7 @@ function solveEllipse(points: DataPoint[], useFractions: boolean = true): Solver
     const B_coef = solution[1][0];
     const C = solution[2][0];
     const D = solution[3][0];
-    
+
     if (A_coef <= 0 || B_coef <= 0) {
       return {
         coefficients: {},
@@ -348,14 +369,14 @@ function solveEllipse(points: DataPoint[], useFractions: boolean = true): Solver
         error: 'Points do not form a valid ellipse',
       };
     }
-    
+
     const h = -C / (2 * A_coef);
     const k = -D / (2 * B_coef);
     const a = Math.sqrt(1 / A_coef);
     const b = Math.sqrt(1 / B_coef);
-    
+
     const coefficients = { h, k, a, b };
-    
+
     if (!validateCoefficients(coefficients)) {
       return {
         coefficients: {},
@@ -369,12 +390,16 @@ function solveEllipse(points: DataPoint[], useFractions: boolean = true): Solver
       equation: `(x ${formatCoefficient(-h, true, useFractions)})²/${formatCoefficient(a, false, useFractions)}² + (y ${formatCoefficient(-k, true, useFractions)})²/${formatCoefficient(b, false, useFractions)}² = 1`,
     };
   } catch (e) {
-    return { coefficients: {}, equation: '', error: 'Unable to solve ellipse equation - points may be invalid' };
+    return {
+      coefficients: {},
+      equation: '',
+      error: 'Unable to solve ellipse equation - points may be invalid',
+    };
   }
 }
 
 // Sine approximation: y = a * sin(bx + c) + d
-function solveSine(points: DataPoint[], useFractions: boolean = true): SolverResult {
+function solveSine(points: DataPoint[], _useFractions: boolean = true): SolverResult {
   if (points.length < 4) {
     return {
       coefficients: {},
@@ -387,11 +412,11 @@ function solveSine(points: DataPoint[], useFractions: boolean = true): SolverRes
   // This is a simplified approach - in practice, you'd want to use a more robust method
   const x = points.map(p => p.x);
   const y = points.map(p => p.y);
-  
+
   // Initial guess for parameters
   const a = (Math.max(...y) - Math.min(...y)) / 2;
   const d = (Math.max(...y) + Math.min(...y)) / 2;
-  const b = 2 * Math.PI / (Math.max(...x) - Math.min(...x));
+  const b = (2 * Math.PI) / (Math.max(...x) - Math.min(...x));
   const c = 0;
 
   // Calculate R²
@@ -405,7 +430,7 @@ function solveSine(points: DataPoint[], useFractions: boolean = true): SolverRes
 }
 
 // Logarithmic approximation: y = a * ln(bx + c) + d
-function solveLog(points: DataPoint[], useFractions: boolean = true): SolverResult {
+function solveLog(points: DataPoint[], _useFractions: boolean = true): SolverResult {
   if (points.length < 3) {
     return {
       coefficients: {},
@@ -418,7 +443,7 @@ function solveLog(points: DataPoint[], useFractions: boolean = true): SolverResu
   // This is a simplified approach - in practice, you'd want to use a more robust method
   const x = points.map(p => p.x);
   const y = points.map(p => p.y);
-  
+
   // Initial guess for parameters
   const a = (Math.max(...y) - Math.min(...y)) / Math.log(Math.max(...x) / Math.min(...x));
   const b = 1;
@@ -436,7 +461,7 @@ function solveLog(points: DataPoint[], useFractions: boolean = true): SolverResu
 }
 
 // Exponential approximation: y = a * e^(bx + c) + d
-function solveExponential(points: DataPoint[], useFractions: boolean = true): SolverResult {
+function solveExponential(points: DataPoint[], _useFractions: boolean = true): SolverResult {
   if (points.length < 3) {
     return {
       coefficients: {},
@@ -449,9 +474,10 @@ function solveExponential(points: DataPoint[], useFractions: boolean = true): So
   // This is a simplified approach - in practice, you'd want to use a more robust method
   const x = points.map(p => p.x);
   const y = points.map(p => p.y);
-  
+
   // Initial guess for parameters
-  const a = (Math.max(...y) - Math.min(...y)) / (Math.exp(Math.max(...x)) - Math.exp(Math.min(...x)));
+  const a =
+    (Math.max(...y) - Math.min(...y)) / (Math.exp(Math.max(...x)) - Math.exp(Math.min(...x)));
   const b = 1;
   const c = 0;
   const d = Math.min(...y);
@@ -476,7 +502,11 @@ function calculateRSquared(points: DataPoint[], predictFn: (x: number) => number
   return 1 - ssRes / ssTot;
 }
 
-function solveApproximationEquation(equationType: ApproximationEquationType, points: DataPoint[], useFractions: boolean = true): SolverResult {
+function solveApproximationEquation(
+  equationType: ApproximationEquationType,
+  points: DataPoint[],
+  useFractions: boolean = true
+): SolverResult {
   switch (equationType) {
     case ApproximationEquationType.SINE:
       return solveSine(points, useFractions);
@@ -500,7 +530,7 @@ function toFraction(decimal: number, tolerance: number = 0.0001): string {
 
   const sign = decimal < 0 ? '-' : '';
   const absDecimal = Math.abs(decimal);
-  
+
   // Try common denominators up to 100
   for (let denominator = 2; denominator <= 100; denominator++) {
     const numerator = Math.round(absDecimal * denominator);
@@ -508,14 +538,14 @@ function toFraction(decimal: number, tolerance: number = 0.0001): string {
       const commonDivisor = gcd(numerator, denominator);
       const simplifiedNumerator = numerator / commonDivisor;
       const simplifiedDenominator = denominator / commonDivisor;
-      
+
       if (simplifiedDenominator === 1) {
         return sign + simplifiedNumerator.toString();
       }
       return sign + simplifiedNumerator + '/' + simplifiedDenominator;
     }
   }
-  
+
   // If no simple fraction found, return formatted decimal
   return formatNumber(decimal);
 }
@@ -525,19 +555,23 @@ function formatNumber(num: number): string {
   if (Math.abs(num - Math.round(num)) < 0.0001) {
     return Math.round(num).toString();
   }
-  
+
   // If it has 3 or fewer significant decimal places, show those
   const rounded = parseFloat(num.toFixed(6));
   const str = rounded.toString();
   if (str.includes('.') && str.split('.')[1].length <= 3) {
     return str;
   }
-  
+
   // Otherwise use 4 decimal places
   return num.toFixed(4);
 }
 
-function formatCoefficient(num: number, showSign: boolean = false, useFractions: boolean = true): string {
+function formatCoefficient(
+  num: number,
+  showSign: boolean = false,
+  useFractions: boolean = true
+): string {
   const formatted = useFractions ? toFraction(num) : formatNumber(num);
   if (showSign && num > 0) {
     return '+' + formatted;

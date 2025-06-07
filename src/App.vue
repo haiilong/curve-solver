@@ -23,7 +23,13 @@
 import TabContainer from './components/TabContainer.vue';
 import ExactEquation from './components/ExactEquation.vue';
 import ApproximationEquation from './components/ApproximationEquation.vue';
-import { type DataPoint, type EquationType, ExactEquationType, ApproximationEquationType, solveEquation } from './solvers.ts';
+import {
+  type DataPoint,
+  type EquationType,
+  ExactEquationType,
+  ApproximationEquationType,
+  solveEquation,
+} from './solvers.ts';
 import { ref, computed } from 'vue';
 
 const tabs = [
@@ -38,14 +44,50 @@ const tabs = [
 ];
 
 const sampleDataSets: Record<EquationType, DataPoint[]> = {
-  [ExactEquationType.LINEAR]: [ { x: 0, y: 1 }, { x: 1, y: 3 } ],
-  [ExactEquationType.QUADRATIC]: [ { x: -2, y: 4 }, { x: -1, y: 1 }, { x: 0, y: 0 } ],
-  [ExactEquationType.CUBIC]: [ { x: -2, y: -8 }, { x: -1, y: -1 }, { x: 0, y: 0 }, { x: 1, y: 1 } ],
-  [ExactEquationType.CIRCLE]: [ { x: 0, y: 2 }, { x: 2, y: 0 }, { x: 0, y: -2 } ],
-  [ExactEquationType.ELLIPSE]: [ { x: 0, y: 3 }, { x: 2, y: 0 }, { x: 0, y: -3 }, { x: -2, y: 0 } ],
-  [ApproximationEquationType.SINE]: [ { x: 0, y: 0 }, { x: Math.PI / 2, y: 1 }, { x: Math.PI, y: 0 }, { x: 3 * Math.PI / 2, y: -1 } ],
-  [ApproximationEquationType.LOG]: [ { x: 1, y: 0 }, { x: 2, y: 0.693 }, { x: 3, y: 1.099 }, { x: 4, y: 1.386 } ],
-  [ApproximationEquationType.EXPONENTIAL]: [ { x: 0, y: 1 }, { x: 1, y: 2.718 }, { x: 2, y: 7.389 }, { x: 3, y: 20.086 } ],
+  [ExactEquationType.LINEAR]: [
+    { x: 0, y: 1 },
+    { x: 1, y: 3 },
+  ],
+  [ExactEquationType.QUADRATIC]: [
+    { x: -2, y: 4 },
+    { x: -1, y: 1 },
+    { x: 0, y: 0 },
+  ],
+  [ExactEquationType.CUBIC]: [
+    { x: -2, y: -8 },
+    { x: -1, y: -1 },
+    { x: 0, y: 0 },
+    { x: 1, y: 1 },
+  ],
+  [ExactEquationType.CIRCLE]: [
+    { x: 0, y: 2 },
+    { x: 2, y: 0 },
+    { x: 0, y: -2 },
+  ],
+  [ExactEquationType.ELLIPSE]: [
+    { x: 0, y: 3 },
+    { x: 2, y: 0 },
+    { x: 0, y: -3 },
+    { x: -2, y: 0 },
+  ],
+  [ApproximationEquationType.SINE]: [
+    { x: 0, y: 0 },
+    { x: Math.PI / 2, y: 1 },
+    { x: Math.PI, y: 0 },
+    { x: (3 * Math.PI) / 2, y: -1 },
+  ],
+  [ApproximationEquationType.LOG]: [
+    { x: 1, y: 0 },
+    { x: 2, y: 0.693 },
+    { x: 3, y: 1.099 },
+    { x: 4, y: 1.386 },
+  ],
+  [ApproximationEquationType.EXPONENTIAL]: [
+    { x: 0, y: 1 },
+    { x: 1, y: 2.718 },
+    { x: 2, y: 7.389 },
+    { x: 3, y: 20.086 },
+  ],
 };
 
 const requiredPointsMap: Record<EquationType, number> = {
@@ -63,8 +105,12 @@ const dataPoints = ref<DataPoint[]>([]);
 const selectedEquationType = ref<EquationType>(ExactEquationType.LINEAR);
 const useFractions = ref<boolean>(false);
 
-const isExactEquation = computed(() => Object.values(ExactEquationType).includes(selectedEquationType.value as ExactEquationType));
-const currentEquationComponent = computed(() => isExactEquation.value ? ExactEquation : ApproximationEquation);
+const isExactEquation = computed(() =>
+  Object.values(ExactEquationType).includes(selectedEquationType.value as ExactEquationType)
+);
+const currentEquationComponent = computed(() =>
+  isExactEquation.value ? ExactEquation : ApproximationEquation
+);
 const currentResult = computed(() => {
   const result = solveEquation(selectedEquationType.value, dataPoints.value, useFractions.value);
   if (result.error) {
@@ -72,7 +118,9 @@ const currentResult = computed(() => {
   }
   return result.equation || '';
 });
-const currentEquationLabel = computed(() => tabs.find(tab => tab.id === selectedEquationType.value)?.label || '');
+const currentEquationLabel = computed(
+  () => tabs.find(tab => tab.id === selectedEquationType.value)?.label || ''
+);
 const requiredPoints = computed(() => requiredPointsMap[selectedEquationType.value]);
 
 function updatePoints(points: DataPoint[]): void {
