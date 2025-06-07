@@ -9,7 +9,6 @@ export interface SolverResult {
   coefficients: Record<string, number>;
   equation: string;
   error?: string;
-  rSquared?: number;
 }
 
 export const ExactEquationType = {
@@ -65,7 +64,6 @@ function solveExactEquation(
   points: DataPoint[],
   useFractions: boolean = true
 ): SolverResult {
-  // Check for duplicate points in exact equations
   const duplicates = findDuplicatePoints(points);
   if (duplicates.length > 0) {
     return {
@@ -111,156 +109,99 @@ function validateCoefficients(coefficients: Record<string, number>): boolean {
   return Object.values(coefficients).every(value => !isNaN(value) && isFinite(value));
 }
 
+function solvePolynomial(
+  points: DataPoint[],
+  degree: number,
+  useFractions: boolean = true
+): SolverResult {
+  const requiredPoints = degree + 1;
+
+  if (points.length !== requiredPoints) {
+    const equationType = degree === 1 ? 'linear' : degree === 2 ? 'quadratic' : 'cubic';
+    return {
+      coefficients: {},
+      equation: '',
+      error: `Need exactly ${requiredPoints} points for ${equationType} equation`,
+    };
+  }
+
+  const A: number[][] = [];
+  const B: number[] = [];
+
+  for (let i = 0; i < points.length; i++) {
+    const { x, y } = points[i];
+    const row: number[] = [];
+
+    for (let j = degree; j >= 0; j--) {
+      row.push(x ** j);
+    }
+
+    A.push(row);
+    B.push(y);
+  }
+
+  try {
+    const solution = math.lusolve(A, B) as number[][];
+    const coefficients: Record<string, number> = {};
+    const terms: Array<{ coef: number; term: string }> = [];
+
+    for (let i = 0; i <= degree; i++) {
+      const coef = solution[i][0];
+      const power = degree - i;
+
+      const coeffName = String.fromCharCode(97 + i); // 'a', 'b', 'c', 'd'
+      coefficients[coeffName] = coef;
+
+      let term = '';
+      if (power === 0) {
+        term = ''; // constant term
+      } else if (power === 1) {
+        term = 'x';
+      } else if (power === 2) {
+        term = 'x²';
+      } else if (power === 3) {
+        term = 'x³';
+      }
+
+      terms.push({ coef, term });
+    }
+
+    if (!validateCoefficients(coefficients)) {
+      const equationType = degree === 1 ? 'linear' : degree === 2 ? 'quadratic' : 'cubic';
+      return {
+        coefficients: {},
+        equation: '',
+        error: `Unable to solve ${equationType} equation - points may be collinear or invalid`,
+      };
+    }
+
+    return {
+      coefficients,
+      equation: buildPolynomialEquation(terms, useFractions),
+    };
+  } catch (e) {
+    const equationType = degree === 1 ? 'linear' : degree === 2 ? 'quadratic' : 'cubic';
+    return {
+      coefficients: {},
+      equation: '',
+      error: `Unable to solve ${equationType} equation - points may be collinear or invalid`,
+    };
+  }
+}
+
 // Linear equation: y = ax + b
 function solveLinear(points: DataPoint[], useFractions: boolean = true): SolverResult {
-  if (points.length !== 2) {
-    return {
-      coefficients: {},
-      equation: '',
-      error: 'Need exactly 2 points for linear equation',
-    };
-  }
-
-  const x1 = points[0].x;
-  const y1 = points[0].y;
-  const x2 = points[1].x;
-  const y2 = points[1].y;
-
-  if (x1 === x2) {
-    return {
-      coefficients: {},
-      equation: '',
-      error: 'Points cannot have the same x-coordinate for linear equation',
-    };
-  }
-
-  const slope = (y2 - y1) / (x2 - x1);
-  const intercept = y1 - slope * x1;
-
-  const coefficients = { a: slope, b: intercept };
-
-  if (!validateCoefficients(coefficients)) {
-    return {
-      coefficients: {},
-      equation: '',
-      error: 'Unable to solve linear equation - invalid coefficients',
-    };
-  }
-
-  return {
-    coefficients,
-    equation: `y = ${formatCoefficient(slope, false, useFractions)}x ${formatCoefficient(intercept, true, useFractions)}`,
-  };
+  return solvePolynomial(points, 1, useFractions);
 }
 
 // Quadratic equation: y = ax² + bx + c
 function solveQuadratic(points: DataPoint[], useFractions: boolean = true): SolverResult {
-  if (points.length !== 3) {
-    return {
-      coefficients: {},
-      equation: '',
-      error: 'Need exactly 3 points for quadratic equation',
-    };
-  }
-
-  const x1 = points[0].x;
-  const y1 = points[0].y;
-  const x2 = points[1].x;
-  const y2 = points[1].y;
-  const x3 = points[2].x;
-  const y3 = points[2].y;
-
-  const A = [
-    [x1 * x1, x1, 1],
-    [x2 * x2, x2, 1],
-    [x3 * x3, x3, 1],
-  ];
-  const B = [y1, y2, y3];
-
-  try {
-    const solution = math.lusolve(A, B) as number[][];
-    const a = solution[0][0];
-    const b = solution[1][0];
-    const c = solution[2][0];
-
-    const coefficients = { a, b, c };
-
-    if (!validateCoefficients(coefficients)) {
-      return {
-        coefficients: {},
-        equation: '',
-        error: 'Unable to solve quadratic equation - points may be collinear or invalid',
-      };
-    }
-
-    return {
-      coefficients,
-      equation: `y = ${formatCoefficient(a, false, useFractions)}x² ${formatCoefficient(b, true, useFractions)}x ${formatCoefficient(c, true, useFractions)}`,
-    };
-  } catch (e) {
-    return {
-      coefficients: {},
-      equation: '',
-      error: 'Unable to solve quadratic equation - points may be collinear',
-    };
-  }
+  return solvePolynomial(points, 2, useFractions);
 }
 
 // Cubic equation: y = ax³ + bx² + cx + d
 function solveCubic(points: DataPoint[], useFractions: boolean = true): SolverResult {
-  if (points.length !== 4) {
-    return {
-      coefficients: {},
-      equation: '',
-      error: 'Need exactly 4 points for cubic equation',
-    };
-  }
-
-  const x1 = points[0].x;
-  const y1 = points[0].y;
-  const x2 = points[1].x;
-  const y2 = points[1].y;
-  const x3 = points[2].x;
-  const y3 = points[2].y;
-  const x4 = points[3].x;
-  const y4 = points[3].y;
-
-  const A = [
-    [x1 ** 3, x1 ** 2, x1, 1],
-    [x2 ** 3, x2 ** 2, x2, 1],
-    [x3 ** 3, x3 ** 2, x3, 1],
-    [x4 ** 3, x4 ** 2, x4, 1],
-  ];
-  const B = [y1, y2, y3, y4];
-
-  try {
-    const solution = math.lusolve(A, B) as number[][];
-    const a = solution[0][0];
-    const b = solution[1][0];
-    const c = solution[2][0];
-    const d = solution[3][0];
-
-    const coefficients = { a, b, c, d };
-
-    if (!validateCoefficients(coefficients)) {
-      return {
-        coefficients: {},
-        equation: '',
-        error: 'Unable to solve cubic equation - points may be invalid or degenerate',
-      };
-    }
-
-    return {
-      coefficients,
-      equation: `y = ${formatCoefficient(a, false, useFractions)}x³ ${formatCoefficient(b, true, useFractions)}x² ${formatCoefficient(c, true, useFractions)}x ${formatCoefficient(d, true, useFractions)}`,
-    };
-  } catch (e) {
-    return {
-      coefficients: {},
-      equation: '',
-      error: 'Unable to solve cubic equation - points may be invalid',
-    };
-  }
+  return solvePolynomial(points, 3, useFractions);
 }
 
 // Circle equation: (x-h)² + (y-k)² = r²
@@ -315,9 +256,26 @@ function solveCircle(points: DataPoint[], useFractions: boolean = true): SolverR
       };
     }
 
+    let equation = '(x';
+    if (Math.abs(h) > 1e-10) {
+      const hFormatted = formatCoefficient(-h, true, useFractions);
+      if (hFormatted !== '') {
+        equation += hFormatted;
+      }
+    }
+    equation += ')² + (y';
+    if (Math.abs(k) > 1e-10) {
+      const kFormatted = formatCoefficient(-k, true, useFractions);
+      if (kFormatted !== '') {
+        equation += kFormatted;
+      }
+    }
+    equation += ')² = ';
+    equation += formatCoefficient(r, false, useFractions) + '²';
+
     return {
       coefficients,
-      equation: `(x ${formatCoefficient(-h, true, useFractions)})² + (y ${formatCoefficient(-k, true, useFractions)})² = ${formatCoefficient(r, false, useFractions)}²`,
+      equation,
     };
   } catch (e) {
     return {
@@ -372,8 +330,19 @@ function solveEllipse(points: DataPoint[], useFractions: boolean = true): Solver
 
     const h = -C / (2 * A_coef);
     const k = -D / (2 * B_coef);
-    const a = Math.sqrt(1 / A_coef);
-    const b = Math.sqrt(1 / B_coef);
+
+    const constantTerm = 1 + (C * C) / (4 * A_coef) + (D * D) / (4 * B_coef);
+
+    if (constantTerm <= 0) {
+      return {
+        coefficients: {},
+        equation: '',
+        error: 'Points do not form a valid ellipse - negative discriminant',
+      };
+    }
+
+    const a = Math.sqrt(constantTerm / A_coef);
+    const b = Math.sqrt(constantTerm / B_coef);
 
     const coefficients = { h, k, a, b };
 
@@ -385,9 +354,29 @@ function solveEllipse(points: DataPoint[], useFractions: boolean = true): Solver
       };
     }
 
+    let equation = '(x';
+    if (Math.abs(h) > 1e-10) {
+      const hFormatted = formatCoefficient(-h, true, useFractions);
+      if (hFormatted !== '') {
+        equation += hFormatted;
+      }
+    }
+    equation += ')²/';
+    equation += formatCoefficient(a, false, useFractions) + '²';
+    equation += ' + (y';
+    if (Math.abs(k) > 1e-10) {
+      const kFormatted = formatCoefficient(-k, true, useFractions);
+      if (kFormatted !== '') {
+        equation += kFormatted;
+      }
+    }
+    equation += ')²/';
+    equation += formatCoefficient(b, false, useFractions) + '²';
+    equation += ' = 1';
+
     return {
       coefficients,
-      equation: `(x ${formatCoefficient(-h, true, useFractions)})²/${formatCoefficient(a, false, useFractions)}² + (y ${formatCoefficient(-k, true, useFractions)})²/${formatCoefficient(b, false, useFractions)}² = 1`,
+      equation,
     };
   } catch (e) {
     return {
@@ -419,13 +408,9 @@ function solveSine(points: DataPoint[], _useFractions: boolean = true): SolverRe
   const b = (2 * Math.PI) / (Math.max(...x) - Math.min(...x));
   const c = 0;
 
-  // Calculate R²
-  const rSquared = calculateRSquared(points, x => a * Math.sin(b * x + c) + d);
-
   return {
     coefficients: { a, b, c, d },
     equation: `y = ${a.toFixed(4)} * sin(${b.toFixed(4)}x + ${c.toFixed(4)}) + ${d.toFixed(4)}`,
-    rSquared,
   };
 }
 
@@ -450,13 +435,9 @@ function solveLog(points: DataPoint[], _useFractions: boolean = true): SolverRes
   const c = 0;
   const d = Math.min(...y);
 
-  // Calculate R²
-  const rSquared = calculateRSquared(points, x => a * Math.log(b * x + c) + d);
-
   return {
     coefficients: { a, b, c, d },
     equation: `y = ${a.toFixed(4)} * ln(${b.toFixed(4)}x + ${c.toFixed(4)}) + ${d.toFixed(4)}`,
-    rSquared,
   };
 }
 
@@ -482,24 +463,10 @@ function solveExponential(points: DataPoint[], _useFractions: boolean = true): S
   const c = 0;
   const d = Math.min(...y);
 
-  // Calculate R²
-  const rSquared = calculateRSquared(points, x => a * Math.exp(b * x + c) + d);
-
   return {
     coefficients: { a, b, c, d },
     equation: `y = ${a.toFixed(4)} * e^(${b.toFixed(4)}x + ${c.toFixed(4)}) + ${d.toFixed(4)}`,
-    rSquared,
   };
-}
-
-function calculateRSquared(points: DataPoint[], predictFn: (x: number) => number): number {
-  const yMean = points.reduce((sum, p) => sum + p.y, 0) / points.length;
-  const ssRes = points.reduce((sum, p) => {
-    const predicted = predictFn(p.x);
-    return sum + (p.y - predicted) ** 2;
-  }, 0);
-  const ssTot = points.reduce((sum, p) => sum + (p.y - yMean) ** 2, 0);
-  return 1 - ssRes / ssTot;
 }
 
 function solveApproximationEquation(
@@ -531,7 +498,6 @@ function toFraction(decimal: number, tolerance: number = 0.0001): string {
   const sign = decimal < 0 ? '-' : '';
   const absDecimal = Math.abs(decimal);
 
-  // Try common denominators up to 100
   for (let denominator = 2; denominator <= 100; denominator++) {
     const numerator = Math.round(absDecimal * denominator);
     if (Math.abs(absDecimal - numerator / denominator) < tolerance) {
@@ -546,24 +512,20 @@ function toFraction(decimal: number, tolerance: number = 0.0001): string {
     }
   }
 
-  // If no simple fraction found, return formatted decimal
   return formatNumber(decimal);
 }
 
 function formatNumber(num: number): string {
-  // If it's very close to an integer, show as integer
   if (Math.abs(num - Math.round(num)) < 0.0001) {
     return Math.round(num).toString();
   }
 
-  // If it has 3 or fewer significant decimal places, show those
   const rounded = parseFloat(num.toFixed(6));
   const str = rounded.toString();
   if (str.includes('.') && str.split('.')[1].length <= 3) {
     return str;
   }
 
-  // Otherwise use 4 decimal places
   return num.toFixed(4);
 }
 
@@ -572,9 +534,50 @@ function formatCoefficient(
   showSign: boolean = false,
   useFractions: boolean = true
 ): string {
-  const formatted = useFractions ? toFraction(num) : formatNumber(num);
-  if (showSign && num > 0) {
-    return '+' + formatted;
+  if (Math.abs(num) < 1e-10) {
+    return showSign ? '' : '0';
   }
+
+  const formatted = useFractions ? toFraction(num) : formatNumber(num);
+
+  if (showSign) {
+    if (num > 0) {
+      return ` + ${formatted}`;
+    } else {
+      return ` - ${Math.abs(num) === num ? formatted : useFractions ? toFraction(Math.abs(num)) : formatNumber(Math.abs(num))}`;
+    }
+  }
+
   return formatted;
+}
+
+function buildPolynomialEquation(
+  terms: Array<{ coef: number; term: string }>,
+  useFractions: boolean
+): string {
+  let equation = 'y = ';
+  let equationTerms: string[] = [];
+
+  for (let i = 0; i < terms.length; i++) {
+    const { coef, term } = terms[i];
+    const isFirst = equationTerms.length === 0;
+    const coefficientStr = formatCoefficient(coef, !isFirst, useFractions);
+
+    if (coefficientStr !== '') {
+      if (term === '') {
+        equationTerms.push(coefficientStr);
+      } else if (Math.abs(coef) === 1 && term !== '') {
+        if (isFirst) {
+          equationTerms.push(coef === 1 ? term : `-${term}`);
+        } else {
+          equationTerms.push(coef === 1 ? ` + ${term}` : ` - ${term}`);
+        }
+      } else {
+        equationTerms.push(`${coefficientStr}${term}`);
+      }
+    }
+  }
+
+  equation += equationTerms.length > 0 ? equationTerms.join('') : '0';
+  return equation;
 }
