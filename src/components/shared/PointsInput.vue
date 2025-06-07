@@ -1,7 +1,32 @@
 <template>
   <div class="points-container">
     <div class="equation-header">
-      <h2>{{ equationLabel.split('\n')[0] }}</h2>
+      <div class="title-section">
+        <h2>{{ equationLabel.split('\n')[0] }}</h2>
+        <div v-if="equationTooltip" class="tooltip-container">
+          <button 
+            class="help-button"
+            @click="showTooltip = !showTooltip"
+            @blur="handleBlur"
+            ref="helpButtonRef"
+          >?</button>
+          <div 
+            v-if="showTooltip" 
+            class="tooltip-popup"
+            @mouseenter="keepTooltipOpen = true"
+            @mouseleave="handleTooltipMouseLeave"
+          >
+            <div class="tooltip-content">
+              <h3>Algorithm Details</h3>
+              <div class="tooltip-text">
+                <div v-for="line in equationTooltip.split('\n')" :key="line" class="tooltip-line">
+                  {{ line }}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
       <div class="points-info">
         <span v-if="isFixedPoints">Required points: {{ requiredPoints }}</span>
         <span v-else>Points: {{ dataPoints.length }}</span>
@@ -9,7 +34,6 @@
     </div>
 
     <div class="points-list">
-      <!-- Fixed points mode (for exact equations) -->
       <template v-if="isFixedPoints">
         <div v-for="i in requiredPoints" :key="i" class="point-item">
           <span class="point-label">Point {{ i }}:</span>
@@ -32,15 +56,22 @@
         </div>
       </template>
 
-      <!-- Dynamic points mode (for approximation equations) -->
       <template v-else>
         <div v-for="(point, index) in dataPoints" :key="index" class="point-item">
-          <span class="point-label">Point {{ index + 1 }}:</span>
-          <span class="point-coords">({{ point.x.toFixed(2) }}, {{ point.y.toFixed(2) }})</span>
-          <button @click="$emit('remove-point', index)" class="remove-button">×</button>
+          <div class="point-header">
+            <span class="point-label">Point {{ index + 1 }}:</span>
+            <button @click="$emit('remove-point', index)" class="remove-button" title="Remove point">×</button>
+          </div>
+          <div class="point-display">
+            <span class="point-coords">({{ formatCoordinate(point?.x || 0) }}, {{ formatCoordinate(point?.y || 0) }})</span>
+          </div>
         </div>
-        <div class="point-item empty">
-          <span class="point-label">New Point:</span>
+        
+        <div class="point-item add-point">
+          <div class="point-header">
+            <span class="point-label">New Point:</span>
+            <button @click="addPoint" class="add-button">Add</button>
+          </div>
           <div class="point-inputs">
             <input
               v-model="newPoint.x"
@@ -56,9 +87,10 @@
               placeholder="y"
               @keyup.enter="addPoint"
             />
-            <button @click="addPoint" class="add-button">Add</button>
           </div>
         </div>
+
+
       </template>
     </div>
   </div>
@@ -71,6 +103,7 @@ import type { DataPoint } from '../../solvers.ts';
 interface Props {
   dataPoints: DataPoint[];
   equationLabel: string;
+  equationTooltip?: string;
   requiredPoints?: number;
   isFixedPoints?: boolean;
 }
@@ -82,8 +115,9 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update-points': [points: DataPoint[]];
-  'add-point': [];
+  'add-point': [x: number, y: number];
   'remove-point': [index: number];
+  'solve-equation': [];
 }>();
 
 const inputPoints = ref<Array<{ x: string; y: string }>>(
@@ -94,8 +128,9 @@ const inputPoints = ref<Array<{ x: string; y: string }>>(
 
 const newPoint = ref({ x: '', y: '' });
 const isUpdating = ref(false);
-
-// Watch for external dataPoints changes (for fixed points mode)
+const showTooltip = ref(false);
+const keepTooltipOpen = ref(false);
+const helpButtonRef = ref<HTMLButtonElement>();
 watch(
   () => props.dataPoints,
   newPoints => {
@@ -152,8 +187,30 @@ function addPoint() {
     return;
   }
 
-  emit('add-point');
+  emit('add-point', x, y);
   newPoint.value = { x: '', y: '' };
+}
+
+function formatCoordinate(value: number): string {
+  if (Math.abs(value - Math.round(value)) < 0.0001) {
+    return Math.round(value).toString();
+  }
+  
+  const formatted = parseFloat(value.toFixed(3)).toString();
+  return formatted;
+}
+
+function handleBlur() {
+  setTimeout(() => {
+    if (!keepTooltipOpen.value) {
+      showTooltip.value = false;
+    }
+  }, 150);
+}
+
+function handleTooltipMouseLeave() {
+  keepTooltipOpen.value = false;
+  showTooltip.value = false;
 }
 </script>
 
@@ -169,10 +226,104 @@ function addPoint() {
   margin-bottom: 20px;
 }
 
+.title-section {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+}
+
 .equation-header h2 {
   margin: 0;
   color: #2c3e50;
   font-size: 1.5em;
+}
+
+.tooltip-container {
+  position: relative;
+  display: inline-block;
+}
+
+.help-button {
+  background: #3498db;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+  font-size: 0.9em;
+  font-weight: bold;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 5px;
+}
+
+.help-button:hover {
+  background: #2980b9;
+  transform: scale(1.1);
+}
+
+.tooltip-popup {
+  position: absolute;
+  top: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: white;
+  border: 2px solid #3498db;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  min-width: 320px;
+  max-width: 450px;
+  animation: tooltipFadeIn 0.2s ease-out;
+}
+
+@keyframes tooltipFadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+.tooltip-content {
+  padding: 16px 20px;
+}
+
+.tooltip-content h3 {
+  margin: 0 0 12px 0;
+  color: #2c3e50;
+  font-size: 1.1em;
+  border-bottom: 2px solid #3498db;
+  padding-bottom: 8px;
+}
+
+.tooltip-text {
+  color: #2c3e50;
+  font-size: 0.9em;
+  line-height: 1.4;
+}
+
+.tooltip-line {
+  margin-bottom: 6px;
+}
+
+.tooltip-line:first-child {
+  font-weight: 600;
+  color: #e74c3c;
+  margin-bottom: 8px;
+}
+
+.tooltip-line:not(:first-child):before {
+  content: '• ';
+  color: #3498db;
+  font-weight: bold;
+  margin-right: 6px;
 }
 
 .points-info {
@@ -182,52 +333,89 @@ function addPoint() {
 
 .points-list {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
   gap: 18px;
 }
 
+.points-list:has(.point-item:not(.add-point)) {
+  grid-template-columns: repeat(auto-fit, 170px);
+  justify-content: start;
+}
+
+.points-list:has(.add-point) {
+  grid-template-columns: repeat(auto-fit, minmax(170px, 200px));
+  justify-content: start;
+}
 .point-item {
   background: #f8f9fa;
   padding: 12px;
-  border-radius: 4px;
+  border-radius: 8px;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   min-width: 170px;
+  border: 2px solid #e9ecef;
+  transition: border-color 0.2s ease;
 }
 
-.point-item.empty {
+.point-item:hover {
+  border-color: #3498db;
+}
+
+.point-item.add-point {
   background: #e9ecef;
-  color: #666;
+  border-style: dashed;
+}
+
+.point-item.add-point:hover {
+  background: #f0f7ff;
+}
+
+.point-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  margin-bottom: 8px;
 }
 
 .point-label {
-  font-weight: 500;
+  font-weight: 600;
   color: #2c3e50;
-  margin-bottom: 6px;
+}
+
+.point-display {
+  width: 100%;
+  text-align: center;
 }
 
 .point-coords {
-  font-family: monospace;
-  color: #666;
+  font-family: 'Courier New', monospace;
+  color: #2c3e50;
+  background: #fff;
+  padding: 8px 12px;
+  border-radius: 4px;
+  border: 1px solid #ddd;
+  display: inline-block;
+  font-weight: 500;
 }
 
 .point-inputs {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   align-items: center;
   width: 100%;
 }
 
-input {
-  width: 80px;
-  padding: 6px 10px;
-  border: 1px solid #ddd;
+.point-inputs input {
+  width: 70px;
+  padding: 8px 10px;
+  border: 2px solid #ddd;
   border-radius: 4px;
-  font-size: 1em;
+  font-size: 0.9em;
+  transition: border-color 0.2s ease;
 }
 
-input:focus {
+.point-inputs input:focus {
   outline: none;
   border-color: #3498db;
 }
@@ -239,7 +427,9 @@ input:focus {
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 0.9em;
+  font-size: 0.8em;
+  line-height: 1.2;
+  transition: background-color 0.2s ease;
 }
 
 .add-button:hover {
@@ -247,32 +437,32 @@ input:focus {
 }
 
 .remove-button {
-  padding: 2px 6px;
   background: #e74c3c;
   color: white;
   border: none;
   border-radius: 4px;
+  width: 20px;
+  height: 20px;
   cursor: pointer;
-  font-size: 0.9em;
-  line-height: 1;
+  font-size: 0.8em;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s ease;
 }
 
 .remove-button:hover {
   background: #c0392b;
 }
 
-@media (max-width: 1100px) {
-  .points-list {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
 
-@media (max-width: 700px) {
-  .points-list {
-    grid-template-columns: 1fr;
-  }
-  .point-item {
-    min-width: 0;
+
+@media (max-width: 768px) {
+  .points-list:has(.point-item:not(.add-point)),
+  .points-list:has(.add-point) {
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    justify-content: stretch;
   }
 }
 </style>

@@ -2,7 +2,7 @@
   <div class="result-container">
     <div class="result-label">Result:</div>
     <div class="result-value" :class="{ 'has-error': result.startsWith('Error:') }">
-      {{ result || fallbackMessage }}
+      <div class="result-text">{{ result || fallbackMessage }}</div>
     </div>
   </div>
 </template>
@@ -49,6 +49,11 @@ withDefaults(defineProps<Props>(), {
   font-family: 'Times New Roman', serif;
   font-style: italic;
   letter-spacing: 0.5px;
+}
+
+.result-text {
+  white-space: pre-line;
+  line-height: 1.4;
 }
 
 .result-value.has-error {

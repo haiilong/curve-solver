@@ -36,6 +36,7 @@ import { ExactEquationType, ApproximationEquationType } from '../solvers.ts';
 interface Tab {
   id: string;
   label: string;
+  tooltip?: string;
 }
 
 interface Props {
@@ -124,6 +125,8 @@ const approximationTabs = computed(() =>
 .tab-button.active .tab-equation {
   opacity: 1;
 }
+
+
 
 @media (max-width: 1100px) {
   .tab-row {

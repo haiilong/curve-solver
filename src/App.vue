@@ -7,6 +7,7 @@
       :dataPoints="dataPoints"
       :result="currentResult"
       :equationLabel="currentEquationLabel"
+      :equationTooltip="currentEquationTooltip"
       :requiredPoints="requiredPoints"
       :useFractions="useFractions"
       @update-points="updatePoints"
@@ -14,7 +15,8 @@
       @remove-point="removePoint"
       @clear-points="clearPoints"
       @toggle-fractions="toggleFractions"
-      @load-sample-data="loadSampleData"
+      @solve-equation="solveApproximationEquation"
+      @load-points="loadPoints"
     />
   </main>
 </template>
@@ -26,6 +28,7 @@ import ApproximationEquation from './components/ApproximationEquation.vue';
 import {
   type DataPoint,
   type EquationType,
+  type SolverResult,
   ExactEquationType,
   ApproximationEquationType,
   solveEquation,
@@ -37,58 +40,23 @@ const tabs = [
   { id: ExactEquationType.QUADRATIC, label: 'Quadratic\ny = ax² + bx + c' },
   { id: ExactEquationType.CUBIC, label: 'Cubic\ny = ax³ + bx² + cx + d' },
   { id: ExactEquationType.CIRCLE, label: 'Circle\n(x-h)² + (y-k)² = r²' },
-  { id: ExactEquationType.ELLIPSE, label: 'Ellipse\n(x-h)²/a² + (y-k)²/b² = 1' },
-  { id: ApproximationEquationType.SINE, label: 'Sine\ny = a * sin(bx + c) + d' },
-  { id: ApproximationEquationType.LOG, label: 'Logarithmic\ny = a * ln(bx + c) + d' },
-  { id: ApproximationEquationType.EXPONENTIAL, label: 'Exponential\ny = a * e^(bx + c) + d' },
+  { id: ExactEquationType.ELLIPSE, label: 'Ellipse (axis-aligned)\n(x-h)²/a² + (y-k)²/b² = 1' },
+  { 
+    id: ApproximationEquationType.SINE, 
+    label: 'Sine\ny = a * sin(bx + c) + d',
+    tooltip: 'Uses Levenberg-Marquardt optimization with smart initialization:\n FFT-like frequency estimation\n 16 phase shift attempts (π/4 intervals)\n Amplitude & frequency harmonic analysis\n Early termination on excellent fits (R² > 99.9%)'
+  },
+  { 
+    id: ApproximationEquationType.LOG, 
+    label: 'Logarithmic\ny = a * ln(bx + c) + d',
+    tooltip: 'Uses Levenberg-Marquardt optimization with log-linear regression:\n Initial estimates from log-transformed data\n Multiple scaling and offset strategies\n Validates positive arguments for ln()\n Adaptive damping for stable convergence\n Prioritizes most promising parameter combinations\n Early termination on excellent fits (R² > 99.9%)'
+  },
+  { 
+    id: ApproximationEquationType.EXPONENTIAL, 
+    label: 'Exponential\ny = a * e^(bx + c) + d',
+    tooltip: 'Uses Levenberg-Marquardt optimization with dual strategies:\n Strategy 1: Log-linear fit for all positive y values\n Strategy 2: Offset estimation for complex data\n Growth vs decay pattern recognition\n Numerical stability validation\n Multiple heuristic initializations for robustness'
+  },
 ];
-
-const sampleDataSets: Record<EquationType, DataPoint[]> = {
-  [ExactEquationType.LINEAR]: [
-    { x: 0, y: 1 },
-    { x: 1, y: 3 },
-  ],
-  [ExactEquationType.QUADRATIC]: [
-    { x: -2, y: 4 },
-    { x: -1, y: 1 },
-    { x: 0, y: 0 },
-  ],
-  [ExactEquationType.CUBIC]: [
-    { x: -2, y: -8 },
-    { x: -1, y: -1 },
-    { x: 0, y: 0 },
-    { x: 1, y: 1 },
-  ],
-  [ExactEquationType.CIRCLE]: [
-    { x: 0, y: 2 },
-    { x: 2, y: 0 },
-    { x: 0, y: -2 },
-  ],
-  [ExactEquationType.ELLIPSE]: [
-    { x: 0, y: 3 },
-    { x: 2, y: 0 },
-    { x: 0, y: -3 },
-    { x: -2, y: 0 },
-  ],
-  [ApproximationEquationType.SINE]: [
-    { x: 0, y: 0 },
-    { x: Math.PI / 2, y: 1 },
-    { x: Math.PI, y: 0 },
-    { x: (3 * Math.PI) / 2, y: -1 },
-  ],
-  [ApproximationEquationType.LOG]: [
-    { x: 1, y: 0 },
-    { x: 2, y: 0.693 },
-    { x: 3, y: 1.099 },
-    { x: 4, y: 1.386 },
-  ],
-  [ApproximationEquationType.EXPONENTIAL]: [
-    { x: 0, y: 1 },
-    { x: 1, y: 2.718 },
-    { x: 2, y: 7.389 },
-    { x: 3, y: 20.086 },
-  ],
-};
 
 const requiredPointsMap: Record<EquationType, number> = {
   [ExactEquationType.LINEAR]: 2,
@@ -96,7 +64,7 @@ const requiredPointsMap: Record<EquationType, number> = {
   [ExactEquationType.CUBIC]: 4,
   [ExactEquationType.CIRCLE]: 3,
   [ExactEquationType.ELLIPSE]: 4,
-  [ApproximationEquationType.SINE]: 4,
+  [ApproximationEquationType.SINE]: 3,
   [ApproximationEquationType.LOG]: 3,
   [ApproximationEquationType.EXPONENTIAL]: 3,
 };
@@ -104,6 +72,7 @@ const requiredPointsMap: Record<EquationType, number> = {
 const dataPoints = ref<DataPoint[]>([]);
 const selectedEquationType = ref<EquationType>(ExactEquationType.LINEAR);
 const useFractions = ref<boolean>(false);
+const approximationResult = ref<SolverResult | null>(null);
 
 const isExactEquation = computed(() =>
   Object.values(ExactEquationType).includes(selectedEquationType.value as ExactEquationType)
@@ -112,14 +81,38 @@ const currentEquationComponent = computed(() =>
   isExactEquation.value ? ExactEquation : ApproximationEquation
 );
 const currentResult = computed(() => {
-  const result = solveEquation(selectedEquationType.value, dataPoints.value, useFractions.value);
-  if (result.error) {
-    return `Error: ${result.error}`;
+  if (isExactEquation.value) {
+    const result = solveEquation(selectedEquationType.value, dataPoints.value, useFractions.value);
+    if (result.error) {
+      return `Error: ${result.error}`;
+    }
+    return result.equation || '';
+  } else {
+    if (!approximationResult.value) {
+      const minPoints = requiredPoints.value;
+      return dataPoints.value.length >= minPoints 
+        ? `Add points and click "Solve Equation" to get the result`
+        : `Add at least ${minPoints} points to solve equation`;
+    }
+    
+    const result = approximationResult.value;
+    if (result.error) {
+      return `Error: ${result.error}`;
+    }
+    
+    let displayResult = result.equation || '';
+    if (result.rSquared !== undefined) {
+      const rSquaredPercent = (result.rSquared * 100).toFixed(1);
+      displayResult += `\nR² = ${rSquaredPercent}%`;
+    }
+    return displayResult;
   }
-  return result.equation || '';
 });
 const currentEquationLabel = computed(
   () => tabs.find(tab => tab.id === selectedEquationType.value)?.label || ''
+);
+const currentEquationTooltip = computed(
+  () => tabs.find(tab => tab.id === selectedEquationType.value)?.tooltip || ''
 );
 const requiredPoints = computed(() => requiredPointsMap[selectedEquationType.value]);
 
@@ -129,27 +122,23 @@ function updatePoints(points: DataPoint[]): void {
 
 function addPoint(x: number, y: number): void {
   if (isExactEquation.value) {
-    const index = dataPoints.value.length;
-    if (index < requiredPoints.value) {
-      dataPoints.value[index] = { x, y };
-    }
+    return;
   } else {
     dataPoints.value.push({ x, y });
+    approximationResult.value = null;
   }
 }
 
 function removePoint(index: number): void {
   if (!isExactEquation.value) {
     dataPoints.value.splice(index, 1);
+    approximationResult.value = null;
   }
 }
 
 function clearPoints(): void {
   dataPoints.value = [];
-}
-
-function loadSampleData(): void {
-  dataPoints.value = [...sampleDataSets[selectedEquationType.value]];
+  approximationResult.value = null;
 }
 
 function handleTabChange(tabId: string): void {
@@ -159,6 +148,26 @@ function handleTabChange(tabId: string): void {
 
 function toggleFractions(): void {
   useFractions.value = !useFractions.value;
+  if (!isExactEquation.value && approximationResult.value) {
+    solveApproximationEquation();
+  }
+}
+
+function solveApproximationEquation(): void {
+  if (isExactEquation.value) return;
+  
+  const result = solveEquation(selectedEquationType.value, dataPoints.value, useFractions.value);
+  approximationResult.value = result;
+}
+
+function loadPoints(points: DataPoint[]): void {
+  if (isExactEquation.value) {
+    const maxPoints = requiredPoints.value;
+    dataPoints.value = points.slice(0, maxPoints);
+  } else {
+    dataPoints.value = [...points];
+    approximationResult.value = null;
+  }
 }
 </script>
 

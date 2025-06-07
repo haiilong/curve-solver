@@ -3,12 +3,14 @@
     :dataPoints="dataPoints"
     :result="result"
     :equationLabel="equationLabel"
+    :equationTooltip="equationTooltip"
     :requiredPoints="requiredPoints"
     :useFractions="useFractions"
     :isExactEquation="true"
     @update-points="$emit('update-points', $event)"
     @clear-points="$emit('clear-points')"
     @toggle-fractions="$emit('toggle-fractions')"
+    @load-points="$emit('load-points', $event)"
   />
 </template>
 
@@ -20,6 +22,7 @@ interface Props {
   dataPoints: DataPoint[];
   result: string;
   equationLabel: string;
+  equationTooltip?: string;
   requiredPoints: number;
   useFractions: boolean;
 }
@@ -30,5 +33,6 @@ defineEmits<{
   'update-points': [points: DataPoint[]];
   'clear-points': [];
   'toggle-fractions': [];
+  'load-points': [points: DataPoint[]];
 }>();
 </script>

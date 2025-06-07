@@ -7,21 +7,94 @@
         <span class="slider"></span>
       </label>
     </div>
-    <button @click="$emit('clear-points')" class="action-button">Clear Points</button>
+    <div class="action-buttons">
+      <button @click="showLoadDialog" class="action-button">Load Points</button>
+      <button @click="$emit('clear-points')" class="action-button">Clear Points</button>
+    </div>
+  </div>
+
+  <div v-if="showDialog" class="dialog-overlay" @click="closeDialog">
+    <div class="dialog-content" @click.stop>
+      <h3>Load Points</h3>
+      <p class="dialog-instructions">
+        Enter points in the format: x,y (one point per line)
+        <br>Example :
+        <br>0,1
+        <br>1,4
+      </p>
+      <textarea 
+        v-model="pointsText" 
+        class="points-textarea" 
+        placeholder="0,1&#10;1,4"
+        rows="6"
+      ></textarea>
+      <div class="dialog-buttons">
+        <button @click="loadPoints" class="dialog-button load-button">Load</button>
+        <button @click="closeDialog" class="dialog-button cancel-button">Cancel</button>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue';
+
 interface Props {
   useFractions: boolean;
 }
 
 defineProps<Props>();
 
-defineEmits<{
+const emit = defineEmits<{
   'toggle-fractions': [];
   'clear-points': [];
+  'load-points': [points: Array<{x: number, y: number}>];
 }>();
+
+const showDialog = ref(false);
+const pointsText = ref('');
+
+function showLoadDialog() {
+  showDialog.value = true;
+  pointsText.value = '';
+}
+
+function closeDialog() {
+  showDialog.value = false;
+  pointsText.value = '';
+}
+
+function loadPoints() {
+  const text = pointsText.value.trim();
+  if (!text) {
+    closeDialog();
+    return;
+  }
+
+  const points: Array<{x: number, y: number}> = [];
+  const lines = text.split('\n');
+  
+  for (const line of lines) {
+    const trimmedLine = line.trim();
+    if (!trimmedLine) continue;
+    
+    const parts = trimmedLine.split(',');
+    if (parts.length !== 2) continue;
+    
+    const x = parseFloat(parts[0].trim());
+    const y = parseFloat(parts[1].trim());
+    
+    if (!isNaN(x) && !isNaN(y)) {
+      points.push({ x, y });
+    }
+  }
+  
+  if (points.length > 0) {
+    emit('load-points', points);
+  }
+  
+  closeDialog();
+}
 </script>
 
 <style scoped>
@@ -96,6 +169,11 @@ input:checked + .slider:before {
   transform: translateX(21px);
 }
 
+.action-buttons {
+  display: flex;
+  gap: 8px;
+}
+
 .action-button {
   padding: 8px 16px;
   border: none;
@@ -109,5 +187,92 @@ input:checked + .slider:before {
 
 .action-button:hover {
   background: #34495e;
+}
+
+/* Dialog Styles */
+.dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.dialog-content {
+  background: white;
+  border-radius: 8px;
+  padding: 24px;
+  width: 90%;
+  max-width: 400px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.dialog-content h3 {
+  margin: 0 0 16px 0;
+  color: #2c3e50;
+  font-size: 1.2em;
+}
+
+.dialog-instructions {
+  margin: 0 0 16px 0;
+  color: #666;
+  font-size: 0.9em;
+  line-height: 1.4;
+}
+
+.points-textarea {
+  width: 100%;
+  min-height: 120px;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 0.9em;
+  resize: vertical;
+  margin-bottom: 16px;
+}
+
+.points-textarea:focus {
+  outline: none;
+  border-color: #2196f3;
+  box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.2);
+}
+
+.dialog-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.dialog-button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9em;
+  transition: background-color 0.2s;
+}
+
+.load-button {
+  background: #27ae60;
+  color: white;
+}
+
+.load-button:hover {
+  background: #229954;
+}
+
+.cancel-button {
+  background: #95a5a6;
+  color: white;
+}
+
+.cancel-button:hover {
+  background: #7f8c8d;
 }
 </style>
