@@ -41,23 +41,24 @@ const tabs = [
   { id: ExactEquationType.CUBIC, label: 'Cubic\ny = ax³ + bx² + cx + d' },
   { id: ExactEquationType.CIRCLE, label: 'Circle\n(x-h)² + (y-k)² = r²' },
   { id: ExactEquationType.ELLIPSE, label: 'Ellipse (axis-aligned)\n(x-h)²/a² + (y-k)²/b² = 1' },
+  { id: ExactEquationType.CONIC, label: 'General Conic\nAx² + Bxy + Cy² + Dx + Ey + F = 0' },
   {
     id: ApproximationEquationType.SINE,
     label: 'Sine\ny = a * sin(bx + c) + d',
     tooltip:
-      'Uses Levenberg-Marquardt optimization with smart initialization:\n FFT-like frequency estimation\n 16 phase shift attempts (π/4 intervals)\n Amplitude & frequency harmonic analysis\n Early termination on excellent fits (R² > 99.9%)',
+      'Levenberg-Marquardt optimization with smart initialization:\n FFT-like frequency estimation\n 16 phase shift attempts (π/4 intervals)\n Amplitude & frequency harmonic analysis\n Early termination on excellent fits (R² > 99.9%)',
   },
   {
     id: ApproximationEquationType.LOG,
     label: 'Logarithmic\ny = a * ln(bx + c) + d',
     tooltip:
-      'Uses Levenberg-Marquardt optimization with log-linear regression:\n Initial estimates from log-transformed data\n Multiple scaling and offset strategies\n Validates positive arguments for ln()\n Adaptive damping for stable convergence\n Prioritizes most promising parameter combinations\n Early termination on excellent fits (R² > 99.9%)',
+      'Levenberg-Marquardt optimization with log-linear regression:\n Initial estimates from log-transformed data\n Multiple scaling and offset strategies\n Validates positive arguments for ln()\n Adaptive damping for stable convergence\n Prioritizes most promising parameter combinations\n Early termination on excellent fits (R² > 99.9%)',
   },
   {
     id: ApproximationEquationType.EXPONENTIAL,
     label: 'Exponential\ny = a * e^(bx + c) + d',
     tooltip:
-      'Uses Levenberg-Marquardt optimization with dual strategies:\n Strategy 1: Log-linear fit for all positive y values\n Strategy 2: Offset estimation for complex data\n Growth vs decay pattern recognition\n Numerical stability validation\n Multiple heuristic initializations for robustness',
+      'Levenberg-Marquardt optimization with dual strategies:\n Strategy 1: Log-linear fit for all positive y values\n Strategy 2: Offset estimation for complex data\n Growth vs decay pattern recognition\n Numerical stability validation\n Multiple heuristic initializations for robustness\n Early termination on excellent fits (R² > 99.9%)',
   },
 ];
 
@@ -67,6 +68,7 @@ const requiredPointsMap: Record<EquationType, number> = {
   [ExactEquationType.CUBIC]: 4,
   [ExactEquationType.CIRCLE]: 3,
   [ExactEquationType.ELLIPSE]: 4,
+  [ExactEquationType.CONIC]: 5,
   [ApproximationEquationType.SINE]: 3,
   [ApproximationEquationType.LOG]: 3,
   [ApproximationEquationType.EXPONENTIAL]: 3,

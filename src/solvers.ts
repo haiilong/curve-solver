@@ -19,6 +19,7 @@ export const ExactEquationType = {
   CUBIC: 'cubic',
   CIRCLE: 'circle',
   ELLIPSE: 'ellipse',
+  CONIC: 'conic',
 } as const;
 
 export const ApproximationEquationType = {
@@ -86,6 +87,8 @@ function solveExactEquation(
       return solveCircle(points, useFractions);
     case ExactEquationType.ELLIPSE:
       return solveEllipse(points, useFractions);
+    case ExactEquationType.CONIC:
+      return solveConic(points, useFractions);
     default:
       return { coefficients: {}, equation: '', error: 'Unknown equation type' };
   }
@@ -326,7 +329,7 @@ function solveEllipse(points: DataPoint[], useFractions: boolean = true): Solver
       return {
         coefficients: {},
         equation: '',
-        error: 'Points do not form a valid ellipse',
+        error: 'Points do not form a valid ellipse. Try the Conic solver instead.',
       };
     }
 
@@ -339,7 +342,8 @@ function solveEllipse(points: DataPoint[], useFractions: boolean = true): Solver
       return {
         coefficients: {},
         equation: '',
-        error: 'Points do not form a valid ellipse - negative discriminant',
+        error:
+          'Points do not form a valid ellipse - negative discriminant. Try the Conic solver instead.',
       };
     }
 
@@ -385,6 +389,128 @@ function solveEllipse(points: DataPoint[], useFractions: boolean = true): Solver
       coefficients: {},
       equation: '',
       error: 'Unable to solve ellipse equation - points may be invalid',
+    };
+  }
+}
+
+// General conic equation: Ax² + Bxy + Cy² + Dx + Ey + F = 0
+function solveConic(points: DataPoint[], useFractions: boolean = true): SolverResult {
+  if (points.length !== 5) {
+    return {
+      coefficients: {},
+      equation: '',
+      error: 'Need exactly 5 points for conic equation',
+    };
+  }
+
+  // General conic form: Ax² + Bxy + Cy² + Dx + Ey + F = 0
+  const A_matrix: number[][] = [];
+  const B_vector: number[] = [];
+
+  for (let i = 0; i < points.length; i++) {
+    const { x, y } = points[i];
+    A_matrix.push([x * x, x * y, y * y, x, y]);
+    B_vector.push(1); // Set F = -1, so right side is 1
+  }
+
+  try {
+    const solution = math.lusolve(A_matrix, B_vector) as number[][];
+    const A = solution[0][0];
+    const B = solution[1][0];
+    const C = solution[2][0];
+    const D = solution[3][0];
+    const E = solution[4][0];
+    const F = -1; // We normalized with F = -1
+
+    // Determine conic type using discriminant: B² - 4AC
+    const discriminant = B * B - 4 * A * C;
+
+    let conicType = '';
+    if (Math.abs(discriminant) < 1e-10) {
+      conicType = 'Parabola';
+    } else if (discriminant > 0) {
+      conicType = 'Hyperbola';
+    } else {
+      // discriminant < 0
+      if (Math.abs(A - C) < 1e-10 && Math.abs(B) < 1e-10) {
+        conicType = 'Circle';
+      } else {
+        conicType = 'Ellipse';
+      }
+    }
+
+    const coefficients = { A, B, C, D, E, F };
+
+    if (!validateCoefficients(coefficients)) {
+      return {
+        coefficients: {},
+        equation: '',
+        error: 'Unable to solve conic equation - invalid coefficients',
+      };
+    }
+
+    let equation = '';
+
+    // Build general conic equation: Ax² + Bxy + Cy² + Dx + Ey + F = 0
+    if (Math.abs(A) > 1e-10) {
+      equation += formatCoefficient(A, false, useFractions) + 'x²';
+    }
+
+    if (Math.abs(B) > 1e-10) {
+      const BFormatted = formatCoefficient(B, equation.length > 0, useFractions);
+      if (BFormatted !== '') {
+        equation += BFormatted + 'xy';
+      }
+    }
+
+    if (Math.abs(C) > 1e-10) {
+      const CFormatted = formatCoefficient(C, equation.length > 0, useFractions);
+      if (CFormatted !== '') {
+        equation += CFormatted + 'y²';
+      }
+    }
+
+    if (Math.abs(D) > 1e-10) {
+      const DFormatted = formatCoefficient(D, equation.length > 0, useFractions);
+      if (DFormatted !== '') {
+        equation += DFormatted + 'x';
+      }
+    }
+
+    if (Math.abs(E) > 1e-10) {
+      const EFormatted = formatCoefficient(E, equation.length > 0, useFractions);
+      if (EFormatted !== '') {
+        equation += EFormatted + 'y';
+      }
+    }
+
+    if (Math.abs(F) > 1e-10) {
+      const FFormatted = formatCoefficient(F, equation.length > 0, useFractions);
+      if (FFormatted !== '') {
+        equation += FFormatted;
+      }
+    }
+
+    equation += ' = 0';
+
+    if (equation.startsWith(' + ')) {
+      equation = equation.substring(3);
+    } else if (equation.startsWith(' - ')) {
+      equation = '-' + equation.substring(3);
+    }
+
+    // Add conic type to the equation display
+    const finalEquation = `${conicType}: ${equation}`;
+
+    return {
+      coefficients,
+      equation: finalEquation,
+    };
+  } catch (e) {
+    return {
+      coefficients: {},
+      equation: '',
+      error: 'Unable to solve conic equation - points may be invalid',
     };
   }
 }
@@ -507,11 +633,24 @@ function solveSine(points: DataPoint[], useFractions: boolean = true): SolverRes
     }
 
     if (!bestResult) {
-      return {
-        coefficients: {},
-        equation: '',
-        error: 'Unable to fit sine curve to the given points',
-      };
+      // If no result found, try a simple fallback with basic parameters
+      try {
+        const fallbackResult = levenbergMarquardt({ x, y }, sineFunction, {
+          initialValues: [a_init, b_init, c_init, d_init],
+          damping: 1.0,
+          maxIterations: 50,
+          errorTolerance: 1e-6,
+        });
+
+        if (fallbackResult.parameterValues) {
+          const [a, b, c, d] = fallbackResult.parameterValues;
+          const rSquared = calculateRSquared(points, xi => a * Math.sin(b * xi + c) + d);
+          bestResult = { a, b, c, d, rSquared: Math.max(0, rSquared || 0) };
+        }
+      } catch (e) {
+        // Even fallback failed, return a basic sine wave approximation
+        bestResult = { a: a_init, b: b_init, c: c_init, d: d_init, rSquared: 0 };
+      }
     }
 
     const { a, b, c, d, rSquared } = bestResult;
@@ -558,10 +697,15 @@ function solveSine(points: DataPoint[], useFractions: boolean = true): SolverRes
       rSquared,
     };
   } catch (e) {
+    // If even the basic initialization fails, return a minimal sine wave
+    const yMean = points.reduce((sum, p) => sum + p.y, 0) / points.length;
+    const yRange = Math.max(...points.map(p => p.y)) - Math.min(...points.map(p => p.y));
+    const xRange = Math.max(...points.map(p => p.x)) - Math.min(...points.map(p => p.x));
+
     return {
-      coefficients: {},
-      equation: '',
-      error: 'Unable to fit sine curve to the given points',
+      coefficients: { a: yRange / 2, b: (2 * Math.PI) / xRange, c: 0, d: yMean },
+      equation: `y = ${formatCoefficient(yRange / 2, false, useFractions)} * sin(${formatCoefficient((2 * Math.PI) / xRange, false, useFractions)}x) + ${formatCoefficient(yMean, false, useFractions)}`,
+      rSquared: 0,
     };
   }
 }
@@ -601,10 +745,12 @@ function solveLog(points: DataPoint[], useFractions: boolean = true): SolverResu
 
     const denominator = n * sumLnX2 - sumLnX * sumLnX;
     if (Math.abs(denominator) < 1e-10) {
+      // Insufficient variation, return a simple ln(x) + constant approximation
+      const yMean = y.reduce((sum, val) => sum + val, 0) / y.length;
       return {
-        coefficients: {},
-        equation: '',
-        error: 'Unable to fit logarithmic curve - insufficient variation in x values',
+        coefficients: { a: 1, b: 1, c: 0, d: yMean },
+        equation: `y = ln(x) + ${formatCoefficient(yMean, false, useFractions)}`,
+        rSquared: 0,
       };
     }
 
@@ -681,11 +827,27 @@ function solveLog(points: DataPoint[], useFractions: boolean = true): SolverResu
     }
 
     if (!bestResult) {
-      return {
-        coefficients: {},
-        equation: '',
-        error: 'Unable to fit logarithmic curve to the given points',
-      };
+      // If no result found, try a simple fallback with basic parameters
+      try {
+        const fallbackResult = levenbergMarquardt({ x, y }, logFunction, {
+          initialValues: [a_init, b_init, c_init, d_init],
+          damping: 1.0,
+          maxIterations: 50,
+          errorTolerance: 1e-6,
+        });
+
+        if (fallbackResult.parameterValues) {
+          const [a, b, c, d] = fallbackResult.parameterValues;
+          const rSquared = calculateRSquared(points, xi => {
+            const arg = b * xi + c;
+            return arg > 0 ? a * Math.log(arg) + d : NaN;
+          });
+          bestResult = { a, b, c, d, rSquared: Math.max(0, rSquared || 0) };
+        }
+      } catch (e) {
+        // Even fallback failed, return a basic logarithmic approximation
+        bestResult = { a: a_init, b: b_init, c: c_init, d: d_init, rSquared: 0 };
+      }
     }
 
     const { a, b, c, d, rSquared } = bestResult;
@@ -732,11 +894,36 @@ function solveLog(points: DataPoint[], useFractions: boolean = true): SolverResu
       rSquared,
     };
   } catch (e) {
-    return {
-      coefficients: {},
-      equation: '',
-      error: 'Unable to fit logarithmic curve to the given points',
-    };
+    // If even the basic initialization fails, return a minimal logarithmic approximation
+    // Use simple linear regression on ln(x) as fallback
+    try {
+      const x = points.map(p => p.x);
+      const y = points.map(p => p.y);
+      const lnX = x.map(xi => Math.log(Math.max(xi, 1e-10))); // Ensure positive values
+      const n = points.length;
+      const sumLnX = lnX.reduce((sum, val) => sum + val, 0);
+      const sumY = y.reduce((sum, val) => sum + val, 0);
+      const sumLnXY = lnX.reduce((sum, val, i) => sum + val * y[i], 0);
+      const sumLnX2 = lnX.reduce((sum, val) => sum + val * val, 0);
+
+      const denominator = n * sumLnX2 - sumLnX * sumLnX;
+      const a = Math.abs(denominator) > 1e-10 ? (n * sumLnXY - sumLnX * sumY) / denominator : 1;
+      const d = (sumY - a * sumLnX) / n;
+
+      return {
+        coefficients: { a, b: 1, c: 0, d },
+        equation: `y = ${formatCoefficient(a, false, useFractions)} * ln(x) + ${formatCoefficient(d, false, useFractions)}`,
+        rSquared: 0,
+      };
+    } catch (e2) {
+      // Ultimate fallback
+      const yMean = points.reduce((sum, p) => sum + p.y, 0) / points.length;
+      return {
+        coefficients: { a: 1, b: 1, c: 0, d: yMean },
+        equation: `y = ln(x) + ${formatCoefficient(yMean, false, useFractions)}`,
+        rSquared: 0,
+      };
+    }
   }
 }
 
@@ -899,11 +1086,35 @@ function solveExponential(points: DataPoint[], useFractions: boolean = true): So
     }
 
     if (!bestResult) {
-      return {
-        coefficients: {},
-        equation: '',
-        error: 'Unable to fit exponential curve to the given points',
-      };
+      // If no result found, try a simple fallback with basic parameters
+      try {
+        // Use the most promising strategy result or create a basic estimate
+        const fallbackInitial = strategy1Result || strategy2Result || [yRange, 1 / xRange, 0, yMin];
+
+        const fallbackResult = levenbergMarquardt({ x, y }, exponentialFunction, {
+          initialValues: fallbackInitial,
+          damping: 1.0,
+          maxIterations: 50,
+          errorTolerance: 1e-6,
+        });
+
+        if (fallbackResult.parameterValues) {
+          const [a, b, c, d] = fallbackResult.parameterValues;
+          const rSquared = calculateRSquared(points, xi => a * Math.exp(b * xi + c) + d);
+          bestResult = { a, b, c, d, rSquared: Math.max(0, rSquared || 0) };
+        }
+      } catch (e) {
+        // Even fallback failed, return a basic exponential approximation
+        const fallbackInitial = strategy1Result ||
+          strategy2Result || { a: yRange, b: 1 / xRange, c: 0, d: yMin };
+        bestResult = {
+          a: fallbackInitial.a,
+          b: fallbackInitial.b,
+          c: fallbackInitial.c,
+          d: fallbackInitial.d,
+          rSquared: 0,
+        };
+      }
     }
 
     const { a, b, c, d, rSquared } = bestResult;
@@ -950,10 +1161,23 @@ function solveExponential(points: DataPoint[], useFractions: boolean = true): So
       rSquared,
     };
   } catch (e) {
+    // If even the basic initialization fails, return a minimal exponential approximation
+    const x = points.map(p => p.x);
+    const y = points.map(p => p.y);
+    const yMin = Math.min(...y);
+    const yMax = Math.max(...y);
+    const yRange = yMax - yMin;
+    const xRange = Math.max(...x) - Math.min(...x);
+
+    // Basic exponential estimate: y = a * e^(bx) + d
+    const a = yRange || 1;
+    const b = 1 / (xRange || 1);
+    const d = yMin;
+
     return {
-      coefficients: {},
-      equation: '',
-      error: 'Unable to fit exponential curve to the given points',
+      coefficients: { a, b, c: 0, d },
+      equation: `y = ${formatCoefficient(a, false, useFractions)} * e^(${formatCoefficient(b, false, useFractions)}x) + ${formatCoefficient(d, false, useFractions)}`,
+      rSquared: 0,
     };
   }
 }

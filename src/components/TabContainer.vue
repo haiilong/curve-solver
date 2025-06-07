@@ -118,7 +118,7 @@ const approximationTabs = computed(() =>
 
 .tab-equation {
   font-family: monospace;
-  font-size: 0.97em;
+  font-size: 0.85em;
   opacity: 0.92;
 }
 
