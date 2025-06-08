@@ -439,12 +439,19 @@ function solveConic(points: DataPoint[], useFractions: boolean = true): SolverRe
     A = A / scaleSquared;
     B = B / scaleSquared;
     C = C / scaleSquared;
-    D = (D / scale) - (2 * A * xMean / scale) - (B * yMean / scale);
-    E = (E / scale) - (2 * C * yMean / scale) - (B * xMean / scale);
+    D = D / scale - (2 * A * xMean) / scale - (B * yMean) / scale;
+    E = E / scale - (2 * C * yMean) / scale - (B * xMean) / scale;
     F = F + A * xMean * xMean + B * xMean * yMean + C * yMean * yMean - D * xMean - E * yMean;
 
     // Normalize so the largest coefficient has reasonable magnitude
-    const maxCoeff = Math.max(Math.abs(A), Math.abs(B), Math.abs(C), Math.abs(D), Math.abs(E), Math.abs(F));
+    const maxCoeff = Math.max(
+      Math.abs(A),
+      Math.abs(B),
+      Math.abs(C),
+      Math.abs(D),
+      Math.abs(E),
+      Math.abs(F)
+    );
     if (maxCoeff > 1e-10) {
       A /= maxCoeff;
       B /= maxCoeff;
