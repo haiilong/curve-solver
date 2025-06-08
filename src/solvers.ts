@@ -403,75 +403,36 @@ function solveConic(points: DataPoint[], useFractions: boolean = true): SolverRe
     };
   }
 
-  // Center the points to improve numerical stability
-  const xMean = points.reduce((sum, p) => sum + p.x, 0) / points.length;
-  const yMean = points.reduce((sum, p) => sum + p.y, 0) / points.length;
-  const centeredPoints = points.map(p => ({ x: p.x - xMean, y: p.y - yMean }));
-
-  // Scale the points to improve conditioning
-  const xRange = Math.max(...centeredPoints.map(p => Math.abs(p.x))) || 1;
-  const yRange = Math.max(...centeredPoints.map(p => Math.abs(p.y))) || 1;
-  const scale = Math.max(xRange, yRange);
-  const scaledPoints = centeredPoints.map(p => ({ x: p.x / scale, y: p.y / scale }));
-
   // General conic form: Ax² + Bxy + Cy² + Dx + Ey + F = 0
   const A_matrix: number[][] = [];
   const B_vector: number[] = [];
 
-  for (let i = 0; i < scaledPoints.length; i++) {
-    const { x, y } = scaledPoints[i];
+  for (let i = 0; i < points.length; i++) {
+    const { x, y } = points[i];
     A_matrix.push([x * x, x * y, y * y, x, y]);
-    B_vector.push(-1); // Set F = 1, so we solve for the other coefficients
+    B_vector.push(1); // Set F = -1, so right side is 1
   }
 
   try {
     const solution = math.lusolve(A_matrix, B_vector) as number[][];
-    let A = solution[0][0];
-    let B = solution[1][0];
-    let C = solution[2][0];
-    let D = solution[3][0];
-    let E = solution[4][0];
-    let F = 1; // We normalized with F = 1
-
-    // Transform coefficients back to original coordinate system
-    // Account for scaling and translation
-    const scaleSquared = scale * scale;
-    A = A / scaleSquared;
-    B = B / scaleSquared;
-    C = C / scaleSquared;
-    D = D / scale - (2 * A * xMean) / scale - (B * yMean) / scale;
-    E = E / scale - (2 * C * yMean) / scale - (B * xMean) / scale;
-    F = F + A * xMean * xMean + B * xMean * yMean + C * yMean * yMean - D * xMean - E * yMean;
-
-    // Normalize so the largest coefficient has reasonable magnitude
-    const maxCoeff = Math.max(
-      Math.abs(A),
-      Math.abs(B),
-      Math.abs(C),
-      Math.abs(D),
-      Math.abs(E),
-      Math.abs(F)
-    );
-    if (maxCoeff > 1e-10) {
-      A /= maxCoeff;
-      B /= maxCoeff;
-      C /= maxCoeff;
-      D /= maxCoeff;
-      E /= maxCoeff;
-      F /= maxCoeff;
-    }
+    const A = solution[0][0];
+    const B = solution[1][0];
+    const C = solution[2][0];
+    const D = solution[3][0];
+    const E = solution[4][0];
+    const F = -1; // We normalized with F = -1
 
     // Determine conic type using discriminant: B² - 4AC
     const discriminant = B * B - 4 * A * C;
 
     let conicType = '';
-    if (Math.abs(discriminant) < 1e-8) {
+    if (Math.abs(discriminant) < 1e-10) {
       conicType = 'Parabola';
     } else if (discriminant > 0) {
       conicType = 'Hyperbola';
     } else {
       // discriminant < 0
-      if (Math.abs(A - C) < 1e-8 && Math.abs(B) < 1e-8) {
+      if (Math.abs(A - C) < 1e-10 && Math.abs(B) < 1e-10) {
         conicType = 'Circle';
       } else {
         conicType = 'Ellipse';
