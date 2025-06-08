@@ -8,6 +8,9 @@
       </label>
     </div>
     <div class="action-buttons">
+      <button @click="copyPoints" class="action-button" :disabled="dataPoints.length === 0">
+        Copy Points
+      </button>
       <button @click="showLoadDialog" class="action-button">Load Points</button>
       <button @click="$emit('clear-points')" class="action-button">Clear Points</button>
     </div>
@@ -39,9 +42,10 @@ import { ref } from 'vue';
 
 interface Props {
   useFractions: boolean;
+  dataPoints: Array<{ x: number; y: number }>;
 }
 
-defineProps<Props>();
+const props = defineProps<Props>();
 
 const emit = defineEmits<{
   'toggle-fractions': [];
@@ -51,6 +55,24 @@ const emit = defineEmits<{
 
 const showDialog = ref(false);
 const pointsText = ref('');
+
+async function copyPoints() {
+  if (props.dataPoints.length === 0) return;
+
+  const pointsText = props.dataPoints.map(point => `${point.x},${point.y}`).join('\n');
+
+  try {
+    await navigator.clipboard.writeText(pointsText);
+  } catch (err) {
+    // Fallback for older browsers
+    const textArea = document.createElement('textarea');
+    textArea.value = pointsText;
+    document.body.appendChild(textArea);
+    textArea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textArea);
+  }
+}
 
 function showLoadDialog() {
   showDialog.value = true;
@@ -185,6 +207,15 @@ input:checked + .slider:before {
 
 .action-button:hover {
   background: #34495e;
+}
+
+.action-button:disabled {
+  background: #bdc3c7;
+  cursor: not-allowed;
+}
+
+.action-button:disabled:hover {
+  background: #bdc3c7;
 }
 
 /* Dialog Styles */

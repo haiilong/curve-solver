@@ -14,6 +14,7 @@
 
     <EquationControls
       :useFractions="useFractions"
+      :dataPoints="dataPoints"
       @toggle-fractions="$emit('toggle-fractions')"
       @clear-points="$emit('clear-points')"
       @load-points="$emit('load-points', $event)"
