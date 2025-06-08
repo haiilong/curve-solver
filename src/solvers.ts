@@ -362,22 +362,22 @@ function solveEllipse(points: DataPoint[], useFractions: boolean = true): Solver
 
     let equation = '(x';
     if (Math.abs(h) > 1e-10) {
-      const hFormatted = formatCoefficient(-h, true, useFractions);
+      const hFormatted = formatCoefficient(-h, true, useFractions, 6);
       if (hFormatted !== '') {
         equation += hFormatted;
       }
     }
     equation += ')²/';
-    equation += formatCoefficient(a, false, useFractions) + '²';
+    equation += formatCoefficient(a, false, useFractions, 6) + '²';
     equation += ' + (y';
     if (Math.abs(k) > 1e-10) {
-      const kFormatted = formatCoefficient(-k, true, useFractions);
+      const kFormatted = formatCoefficient(-k, true, useFractions, 6);
       if (kFormatted !== '') {
         equation += kFormatted;
       }
     }
     equation += ')²/';
-    equation += formatCoefficient(b, false, useFractions) + '²';
+    equation += formatCoefficient(b, false, useFractions, 6) + '²';
     equation += ' = 1';
 
     return {
@@ -403,36 +403,68 @@ function solveConic(points: DataPoint[], useFractions: boolean = true): SolverRe
     };
   }
 
+  // Center the points to improve numerical stability
+  const xMean = points.reduce((sum, p) => sum + p.x, 0) / points.length;
+  const yMean = points.reduce((sum, p) => sum + p.y, 0) / points.length;
+  const centeredPoints = points.map(p => ({ x: p.x - xMean, y: p.y - yMean }));
+
+  // Scale the points to improve conditioning
+  const xRange = Math.max(...centeredPoints.map(p => Math.abs(p.x))) || 1;
+  const yRange = Math.max(...centeredPoints.map(p => Math.abs(p.y))) || 1;
+  const scale = Math.max(xRange, yRange);
+  const scaledPoints = centeredPoints.map(p => ({ x: p.x / scale, y: p.y / scale }));
+
   // General conic form: Ax² + Bxy + Cy² + Dx + Ey + F = 0
   const A_matrix: number[][] = [];
   const B_vector: number[] = [];
 
-  for (let i = 0; i < points.length; i++) {
-    const { x, y } = points[i];
+  for (let i = 0; i < scaledPoints.length; i++) {
+    const { x, y } = scaledPoints[i];
     A_matrix.push([x * x, x * y, y * y, x, y]);
-    B_vector.push(1); // Set F = -1, so right side is 1
+    B_vector.push(-1); // Set F = 1, so we solve for the other coefficients
   }
 
   try {
     const solution = math.lusolve(A_matrix, B_vector) as number[][];
-    const A = solution[0][0];
-    const B = solution[1][0];
-    const C = solution[2][0];
-    const D = solution[3][0];
-    const E = solution[4][0];
-    const F = -1; // We normalized with F = -1
+    let A = solution[0][0];
+    let B = solution[1][0];
+    let C = solution[2][0];
+    let D = solution[3][0];
+    let E = solution[4][0];
+    let F = 1; // We normalized with F = 1
+
+    // Transform coefficients back to original coordinate system
+    // Account for scaling and translation
+    const scaleSquared = scale * scale;
+    A = A / scaleSquared;
+    B = B / scaleSquared;
+    C = C / scaleSquared;
+    D = (D / scale) - (2 * A * xMean / scale) - (B * yMean / scale);
+    E = (E / scale) - (2 * C * yMean / scale) - (B * xMean / scale);
+    F = F + A * xMean * xMean + B * xMean * yMean + C * yMean * yMean - D * xMean - E * yMean;
+
+    // Normalize so the largest coefficient has reasonable magnitude
+    const maxCoeff = Math.max(Math.abs(A), Math.abs(B), Math.abs(C), Math.abs(D), Math.abs(E), Math.abs(F));
+    if (maxCoeff > 1e-10) {
+      A /= maxCoeff;
+      B /= maxCoeff;
+      C /= maxCoeff;
+      D /= maxCoeff;
+      E /= maxCoeff;
+      F /= maxCoeff;
+    }
 
     // Determine conic type using discriminant: B² - 4AC
     const discriminant = B * B - 4 * A * C;
 
     let conicType = '';
-    if (Math.abs(discriminant) < 1e-10) {
+    if (Math.abs(discriminant) < 1e-8) {
       conicType = 'Parabola';
     } else if (discriminant > 0) {
       conicType = 'Hyperbola';
     } else {
       // discriminant < 0
-      if (Math.abs(A - C) < 1e-10 && Math.abs(B) < 1e-10) {
+      if (Math.abs(A - C) < 1e-8 && Math.abs(B) < 1e-8) {
         conicType = 'Circle';
       } else {
         conicType = 'Ellipse';
@@ -453,39 +485,39 @@ function solveConic(points: DataPoint[], useFractions: boolean = true): SolverRe
 
     // Build general conic equation: Ax² + Bxy + Cy² + Dx + Ey + F = 0
     if (Math.abs(A) > 1e-10) {
-      equation += formatCoefficient(A, false, useFractions) + 'x²';
+      equation += formatCoefficient(A, false, useFractions, 7) + 'x²';
     }
 
     if (Math.abs(B) > 1e-10) {
-      const BFormatted = formatCoefficient(B, equation.length > 0, useFractions);
+      const BFormatted = formatCoefficient(B, equation.length > 0, useFractions, 7);
       if (BFormatted !== '') {
         equation += BFormatted + 'xy';
       }
     }
 
     if (Math.abs(C) > 1e-10) {
-      const CFormatted = formatCoefficient(C, equation.length > 0, useFractions);
+      const CFormatted = formatCoefficient(C, equation.length > 0, useFractions, 7);
       if (CFormatted !== '') {
         equation += CFormatted + 'y²';
       }
     }
 
     if (Math.abs(D) > 1e-10) {
-      const DFormatted = formatCoefficient(D, equation.length > 0, useFractions);
+      const DFormatted = formatCoefficient(D, equation.length > 0, useFractions, 7);
       if (DFormatted !== '') {
         equation += DFormatted + 'x';
       }
     }
 
     if (Math.abs(E) > 1e-10) {
-      const EFormatted = formatCoefficient(E, equation.length > 0, useFractions);
+      const EFormatted = formatCoefficient(E, equation.length > 0, useFractions, 7);
       if (EFormatted !== '') {
         equation += EFormatted + 'y';
       }
     }
 
     if (Math.abs(F) > 1e-10) {
-      const FFormatted = formatCoefficient(F, equation.length > 0, useFractions);
+      const FFormatted = formatCoefficient(F, equation.length > 0, useFractions, 7);
       if (FFormatted !== '') {
         equation += FFormatted;
       }
@@ -1238,36 +1270,37 @@ function toFraction(decimal: number, tolerance: number = 0.0001): string {
   return formatNumber(decimal);
 }
 
-function formatNumber(num: number): string {
-  if (Math.abs(num - Math.round(num)) < 0.0001) {
+function formatNumber(num: number, precision: number = 4): string {
+  if (Math.abs(num - Math.round(num)) < Math.pow(10, -precision)) {
     return Math.round(num).toString();
   }
 
-  const rounded = parseFloat(num.toFixed(6));
+  const rounded = parseFloat(num.toFixed(precision + 2));
   const str = rounded.toString();
-  if (str.includes('.') && str.split('.')[1].length <= 3) {
+  if (str.includes('.') && str.split('.')[1].length <= Math.min(3, precision)) {
     return str;
   }
 
-  return num.toFixed(4);
+  return num.toFixed(precision);
 }
 
 function formatCoefficient(
   num: number,
   showSign: boolean = false,
-  useFractions: boolean = true
+  useFractions: boolean = true,
+  precision: number = 4
 ): string {
   if (Math.abs(num) < 1e-10) {
     return showSign ? '' : '0';
   }
 
-  const formatted = useFractions ? toFraction(num) : formatNumber(num);
+  const formatted = useFractions ? toFraction(num) : formatNumber(num, precision);
 
   if (showSign) {
     if (num > 0) {
       return ` + ${formatted}`;
     } else {
-      return ` - ${Math.abs(num) === num ? formatted : useFractions ? toFraction(Math.abs(num)) : formatNumber(Math.abs(num))}`;
+      return ` - ${Math.abs(num) === num ? formatted : useFractions ? toFraction(Math.abs(num)) : formatNumber(Math.abs(num), precision)}`;
     }
   }
 
