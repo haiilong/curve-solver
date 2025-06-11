@@ -2,22 +2,11 @@
   <main class="main-container">
     <h1>Curve Solver</h1>
     <TabContainer :tabs="tabs" :activeTab="selectedEquationType" @tab-change="handleTabChange" />
-    <component
-      :is="currentEquationComponent"
-      :dataPoints="dataPoints"
-      :result="currentResult"
-      :equationLabel="currentEquationLabel"
-      :equationTooltip="currentEquationTooltip"
-      :requiredPoints="requiredPoints"
-      :useFractions="useFractions"
-      @update-points="updatePoints"
-      @add-point="addPoint"
-      @remove-point="removePoint"
-      @clear-points="clearPoints"
-      @toggle-fractions="toggleFractions"
-      @solve-equation="solveApproximationEquation"
-      @load-points="loadPoints"
-    />
+    <component :is="currentEquationComponent" :dataPoints="dataPoints" :result="currentResult"
+      :equationLabel="currentEquationLabel" :equationTooltip="currentEquationTooltip" :requiredPoints="requiredPoints"
+      :useFractions="useFractions" @update-points="updatePoints" @add-point="addPoint" @remove-point="removePoint"
+      @clear-points="clearPoints" @toggle-fractions="toggleFractions" @solve-equation="solveApproximationEquation"
+      @load-points="loadPoints" />
   </main>
 </template>
 
@@ -40,25 +29,30 @@ const tabs = [
   { id: ExactEquationType.QUADRATIC, label: 'Quadratic\ny = ax² + bx + c' },
   { id: ExactEquationType.CUBIC, label: 'Cubic\ny = ax³ + bx² + cx + d' },
   { id: ExactEquationType.CIRCLE, label: 'Circle\n(x-h)² + (y-k)² = r²' },
-  { id: ExactEquationType.ELLIPSE, label: 'Ellipse (axis-aligned)\n(x-h)²/a² + (y-k)²/b² = 1' },
-  { id: ExactEquationType.CONIC, label: 'General Conic\nAx² + Bxy + Cy² + Dx + Ey + F = 0' },
+  { id: ExactEquationType.CONIC, label: 'Conic (General)\nAx² + Bxy + Cy² + Dx + Ey + F = 0' },
   {
     id: ApproximationEquationType.SINE,
     label: 'Sine\ny = a * sin(bx + c) + d',
     tooltip:
-      'Levenberg-Marquardt optimization with smart initialization:\n FFT-like frequency estimation\n 16 phase shift attempts (π/4 intervals)\n Amplitude & frequency harmonic analysis\n Early termination on excellent fits (R² > 99.9%)',
+      'Advanced sine wave fitting with enhanced optimization:\n • Zero-crossing periodicity detection for frequency estimation\n • 16 phase shift attempts with least squares refinement\n • Multiple amplitude and frequency harmonic strategies\n • 200 Levenberg-Marquardt iterations with 1e-9 tolerance\n • Early termination on excellent fits (R² > 99.9%)',
   },
   {
     id: ApproximationEquationType.LOG,
     label: 'Logarithmic\ny = a * ln(bx + c) + d',
     tooltip:
-      'Levenberg-Marquardt optimization with log-linear regression:\n Initial estimates from log-transformed data\n Multiple scaling and offset strategies\n Validates positive arguments for ln()\n Adaptive damping for stable convergence\n Prioritizes most promising parameter combinations\n Early termination on excellent fits (R² > 99.9%)',
+      'Enhanced logarithmic fitting with dual-strategy optimization:\n • Initial log-linear regression for smart parameter estimation\n • Multiple scaling, offset, and domain validation strategies\n • Robust handling of domain constraints (ensures bx + c > 0)\n • 180 Levenberg-Marquardt iterations with 1e-9 tolerance\n • Adaptive damping and fallback mechanisms for stability',
   },
   {
     id: ApproximationEquationType.EXPONENTIAL,
     label: 'Exponential\ny = a * e^(bx + c) + d',
     tooltip:
-      'Levenberg-Marquardt optimization with dual strategies:\n Strategy 1: Log-linear fit for all positive y values\n Strategy 2: Offset estimation for complex data\n Growth vs decay pattern recognition\n Numerical stability validation\n Multiple heuristic initializations for robustness\n Early termination on excellent fits (R² > 99.9%)',
+      'Sophisticated exponential fitting with multi-strategy approach:\n • Strategy 1: Log-linear regression for positive y-values\n • Strategy 2: Intelligent offset estimation for complex patterns\n • Growth vs decay pattern recognition and parameter prioritization\n • 160 Levenberg-Marquardt iterations with enhanced stability (1e-9 tolerance)\n • Numerical overflow protection and robust fallback mechanisms',
+  },
+  {
+    id: ApproximationEquationType.ELLIPSE,
+    label: 'Ellipse (Axis-aligned)\n(x-h)²/a² + (y-k)²/b² = 1',
+    tooltip:
+      'Axis-aligned ellipse fitting using advanced optimization:\n Multi-strategy initialization (bounding box, moments, heuristics)\n Levenberg-Marquardt optimization with 300+ iterations\n Direct 4-parameter fitting: (x-h)²/a² + (y-k)²/b² = 1\n Mathematical correctness with robust constraint handling\n Minimum 4 points required, handles noisy and irregular data',
   },
 ];
 
@@ -67,11 +61,11 @@ const requiredPointsMap: Record<EquationType, number> = {
   [ExactEquationType.QUADRATIC]: 3,
   [ExactEquationType.CUBIC]: 4,
   [ExactEquationType.CIRCLE]: 3,
-  [ExactEquationType.ELLIPSE]: 4,
   [ExactEquationType.CONIC]: 5,
   [ApproximationEquationType.SINE]: 3,
   [ApproximationEquationType.LOG]: 3,
   [ApproximationEquationType.EXPONENTIAL]: 3,
+  [ApproximationEquationType.ELLIPSE]: 4,
 };
 
 const dataPoints = ref<DataPoint[]>([]);

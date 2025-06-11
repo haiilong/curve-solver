@@ -18,7 +18,6 @@ export const ExactEquationType = {
   QUADRATIC: 'quadratic',
   CUBIC: 'cubic',
   CIRCLE: 'circle',
-  ELLIPSE: 'ellipse',
   CONIC: 'conic',
 } as const;
 
@@ -26,6 +25,7 @@ export const ApproximationEquationType = {
   SINE: 'sine',
   LOG: 'log',
   EXPONENTIAL: 'exponential',
+  ELLIPSE: 'ellipse',
 } as const;
 
 export const EquationType = {
@@ -85,8 +85,6 @@ function solveExactEquation(
       return solveCubic(points, useFractions);
     case ExactEquationType.CIRCLE:
       return solveCircle(points, useFractions);
-    case ExactEquationType.ELLIPSE:
-      return solveEllipse(points, useFractions);
     case ExactEquationType.CONIC:
       return solveConic(points, useFractions);
     default:
@@ -291,109 +289,7 @@ function solveCircle(points: DataPoint[], useFractions: boolean = true): SolverR
   }
 }
 
-// Ellipse equation: (x-h)²/a² + (y-k)²/b² = 1
-function solveEllipse(points: DataPoint[], useFractions: boolean = true): SolverResult {
-  if (points.length !== 4) {
-    return {
-      coefficients: {},
-      equation: '',
-      error: 'Need exactly 4 points for ellipse equation',
-    };
-  }
-
-  const x1 = points[0].x;
-  const y1 = points[0].y;
-  const x2 = points[1].x;
-  const y2 = points[1].y;
-  const x3 = points[2].x;
-  const y3 = points[2].y;
-  const x4 = points[3].x;
-  const y4 = points[3].y;
-
-  const A = [
-    [x1 ** 2, y1 ** 2, x1, y1],
-    [x2 ** 2, y2 ** 2, x2, y2],
-    [x3 ** 2, y3 ** 2, x3, y3],
-    [x4 ** 2, y4 ** 2, x4, y4],
-  ];
-  const B = [1, 1, 1, 1];
-
-  try {
-    const solution = math.lusolve(A, B) as number[][];
-    const A_coef = solution[0][0];
-    const B_coef = solution[1][0];
-    const C = solution[2][0];
-    const D = solution[3][0];
-
-    if (A_coef <= 0 || B_coef <= 0) {
-      return {
-        coefficients: {},
-        equation: '',
-        error: 'Points do not form a valid ellipse. Try the Conic solver instead.',
-      };
-    }
-
-    const h = -C / (2 * A_coef);
-    const k = -D / (2 * B_coef);
-
-    const constantTerm = 1 + (C * C) / (4 * A_coef) + (D * D) / (4 * B_coef);
-
-    if (constantTerm <= 0) {
-      return {
-        coefficients: {},
-        equation: '',
-        error:
-          'Points do not form a valid ellipse - negative discriminant. Try the Conic solver instead.',
-      };
-    }
-
-    const a = Math.sqrt(constantTerm / A_coef);
-    const b = Math.sqrt(constantTerm / B_coef);
-
-    const coefficients = { h, k, a, b };
-
-    if (!validateCoefficients(coefficients)) {
-      return {
-        coefficients: {},
-        equation: '',
-        error: 'Unable to solve ellipse equation - invalid coefficients',
-      };
-    }
-
-    let equation = '(x';
-    if (Math.abs(h) > 1e-10) {
-      const hFormatted = formatCoefficient(-h, true, useFractions, 6);
-      if (hFormatted !== '') {
-        equation += hFormatted;
-      }
-    }
-    equation += ')²/';
-    equation += formatCoefficient(a, false, useFractions, 6) + '²';
-    equation += ' + (y';
-    if (Math.abs(k) > 1e-10) {
-      const kFormatted = formatCoefficient(-k, true, useFractions, 6);
-      if (kFormatted !== '') {
-        equation += kFormatted;
-      }
-    }
-    equation += ')²/';
-    equation += formatCoefficient(b, false, useFractions, 6) + '²';
-    equation += ' = 1';
-
-    return {
-      coefficients,
-      equation,
-    };
-  } catch (e) {
-    return {
-      coefficients: {},
-      equation: '',
-      error: 'Unable to solve ellipse equation - points may be invalid',
-    };
-  }
-}
-
-// General conic equation: Ax² + Bxy + Cy² + Dx + Ey + F = 0
+// Conic equation: Ax² + Bxy + Cy² + Dx + Ey + F = 0
 function solveConic(points: DataPoint[], useFractions: boolean = true): SolverResult {
   if (points.length !== 5) {
     return {
@@ -403,7 +299,7 @@ function solveConic(points: DataPoint[], useFractions: boolean = true): SolverRe
     };
   }
 
-  // General conic form: Ax² + Bxy + Cy² + Dx + Ey + F = 0
+  // Conic form: Ax² + Bxy + Cy² + Dx + Ey + F = 0
   const A_matrix: number[][] = [];
   const B_vector: number[] = [];
 
@@ -451,7 +347,7 @@ function solveConic(points: DataPoint[], useFractions: boolean = true): SolverRe
 
     let equation = '';
 
-    // Build general conic equation: Ax² + Bxy + Cy² + Dx + Ey + F = 0
+    // Build Conic equation: Ax² + Bxy + Cy² + Dx + Ey + F = 0
     if (Math.abs(A) > 1e-10) {
       equation += formatCoefficient(A, false, useFractions, 7) + 'x²';
     }
@@ -529,21 +425,29 @@ function solveSine(points: DataPoint[], useFractions: boolean = true): SolverRes
     const x = points.map(p => p.x);
     const y = points.map(p => p.y);
 
-    // Smart initial parameter estimation
     const yMean = y.reduce((sum, val) => sum + val, 0) / y.length;
     const yRange = Math.max(...y) - Math.min(...y);
     const xRange = Math.max(...x) - Math.min(...x);
-
-    // Estimate offset (d) as mean of y values
     const d_init = yMean;
-
-    // Estimate amplitude (a) as half the range
     const a_init = yRange / 2;
 
-    // Estimate frequency (b) using FFT-like approach or autocorrelation
-    let b_init = (2 * Math.PI) / (xRange * 0.5); // Assume 2 cycles in data range
+    let b_init = (2 * Math.PI) / (xRange * 0.5);
 
-    // Sophisticated phase estimation using least squares
+    // Detect periodicity using zero-crossings for better frequency estimation
+    const yShifted = y.map(yi => yi - yMean);
+    let crossings = 0;
+    for (let i = 1; i < yShifted.length; i++) {
+      if (yShifted[i] * yShifted[i - 1] < 0) crossings++;
+    }
+    if (crossings > 2) {
+      const estimatedPeriod = (2 * xRange) / crossings;
+      const freqEstimate = (2 * Math.PI) / estimatedPeriod;
+      if (freqEstimate > 0 && isFinite(freqEstimate)) {
+        b_init = freqEstimate;
+      }
+    }
+
+    // Phase estimation using least squares
     let c_init = 0;
     let bestError = Infinity;
 
@@ -609,9 +513,9 @@ function solveSine(points: DataPoint[], useFractions: boolean = true): SolverRes
         const result = levenbergMarquardt({ x, y }, sineFunction, {
           initialValues,
           damping: 1.8,
-          maxIterations: 150, // Balanced for speed vs accuracy
-          errorTolerance: 1e-8,
-          gradientDifference: 1e-7,
+          maxIterations: 200,
+          errorTolerance: 1e-9,
+          gradientDifference: 1e-8,
         });
 
         if (result.parameterValues) {
@@ -795,9 +699,9 @@ function solveLog(points: DataPoint[], useFractions: boolean = true): SolverResu
         const result = levenbergMarquardt({ x, y }, logFunction, {
           initialValues,
           damping: 1.8,
-          maxIterations: 120, // Balanced for speed
-          errorTolerance: 1e-8,
-          gradientDifference: 1e-6,
+          maxIterations: 180,
+          errorTolerance: 1e-9,
+          gradientDifference: 1e-7,
         });
 
         if (result.parameterValues) {
@@ -1049,10 +953,10 @@ function solveExponential(points: DataPoint[], useFractions: boolean = true): So
 
         const result = levenbergMarquardt({ x, y }, exponentialFunction, {
           initialValues,
-          damping: 2.5, // Balanced damping for exponential stability
-          maxIterations: 100, // Reduced for speed
-          errorTolerance: 1e-8,
-          gradientDifference: 1e-6,
+          damping: 2.2,
+          maxIterations: 160,
+          errorTolerance: 1e-9,
+          gradientDifference: 1e-7,
         });
 
         if (result.parameterValues) {
@@ -1204,6 +1108,8 @@ function solveApproximationEquation(
       return solveLog(points, useFractions);
     case ApproximationEquationType.EXPONENTIAL:
       return solveExponential(points, useFractions);
+    case ApproximationEquationType.ELLIPSE:
+      return solveEllipseApproximation(points, useFractions);
     default:
       return { coefficients: {}, equation: '', error: 'Unknown equation type' };
   }
@@ -1304,4 +1210,533 @@ function buildPolynomialEquation(
 
   equation += equationTerms.length > 0 ? equationTerms.join('') : '0';
   return equation;
+}
+
+// Ellipse approximation: (x-h)²/a² + (y-k)²/b² = 1 using Levenberg-Marquardt
+function solveEllipseApproximation(
+  points: DataPoint[],
+  useFractions: boolean = true
+): SolverResult {
+  if (points.length < 4) {
+    return {
+      coefficients: {},
+      equation: '',
+      error: 'Need at least 4 points for ellipse approximation',
+    };
+  }
+
+  try {
+    const x = points.map(p => p.x);
+    const y = points.map(p => p.y);
+
+    // Smart initial parameter estimation
+    const xMean = x.reduce((sum, val) => sum + val, 0) / x.length;
+    const yMean = y.reduce((sum, val) => sum + val, 0) / y.length;
+    const xMin = Math.min(...x);
+    const xMax = Math.max(...x);
+    const yMin = Math.min(...y);
+    const yMax = Math.max(...y);
+
+    // Initial estimates for ellipse center and semi-axes
+    // These are used by the algebraic fallback method
+
+    // For ellipse fitting, we'll use a parameterized approach
+    // We'll fit multiple y values for each x by solving the ellipse equation
+    // This is a workaround since LM expects y = f(x) format
+
+    // Try algebraic method first as it's more reliable for ellipses
+    const algebraicResult = solveEllipseAlgebraic(points, useFractions);
+    if (algebraicResult.coefficients && Object.keys(algebraicResult.coefficients).length > 0) {
+      return algebraicResult;
+    }
+
+    // Fallback to bounds-based estimate if algebraic fails
+    const h = xMean;
+    const k = yMean;
+    const a = Math.max((xMax - xMin) / 2, 0.1);
+    const b = Math.max((yMax - yMin) / 2, 0.1);
+
+    const rSquared = calculateEllipseRSquared(points, h, k, a, b);
+
+    let equation = '(x';
+    if (Math.abs(h) > 1e-10) {
+      const hFormatted = formatCoefficient(-h, true, useFractions, 6);
+      if (hFormatted !== '') {
+        equation += hFormatted;
+      }
+    }
+    equation += ')²/';
+    equation += formatCoefficient(a, false, useFractions, 6) + '²';
+    equation += ' + (y';
+    if (Math.abs(k) > 1e-10) {
+      const kFormatted = formatCoefficient(-k, true, useFractions, 6);
+      if (kFormatted !== '') {
+        equation += kFormatted;
+      }
+    }
+    equation += ')²/';
+    equation += formatCoefficient(b, false, useFractions, 6) + '²';
+    equation += ' = 1';
+
+    return {
+      coefficients: { h, k, a, b },
+      equation,
+      rSquared,
+    };
+  } catch (e) {
+    return {
+      coefficients: {},
+      equation: '',
+      error: 'Unable to fit ellipse to the given points',
+    };
+  }
+}
+
+// Proper algebraic ellipse fitting using least squares
+function solveEllipseAlgebraic(points: DataPoint[], useFractions: boolean = true): SolverResult {
+  if (points.length < 4) {
+    return {
+      coefficients: {},
+      equation: '',
+      error: 'Need at least 4 points for ellipse approximation',
+    };
+  }
+
+  try {
+    // Axis-aligned ellipse fitting: (x-h)²/a² + (y-k)²/b² = 1
+    // Using direct 4-parameter optimization with multiple initialization strategies
+
+    const n = points.length;
+
+    // Calculate data statistics for initialization
+    const xMean = points.reduce((sum, p) => sum + p.x, 0) / n;
+    const yMean = points.reduce((sum, p) => sum + p.y, 0) / n;
+    const xMin = Math.min(...points.map(p => p.x));
+    const xMax = Math.max(...points.map(p => p.x));
+    const yMin = Math.min(...points.map(p => p.y));
+    const yMax = Math.max(...points.map(p => p.y));
+
+    const centeredX = points.map(p => p.x - xMean);
+    const centeredY = points.map(p => p.y - yMean);
+    const stdX = Math.sqrt(centeredX.reduce((sum, x) => sum + x * x, 0) / n);
+    const stdY = Math.sqrt(centeredY.reduce((sum, y) => sum + y * y, 0) / n);
+
+    let bestH = xMean,
+      bestK = yMean,
+      bestA = 1,
+      bestB = 1;
+    let bestError = Infinity;
+
+    // Multiple initialization strategies for robust fitting
+    const initStrategies = [
+      // Strategy 1: Mean center with standard deviations
+      { h: xMean, k: yMean, a: Math.max(stdX * 1.5, 0.1), b: Math.max(stdY * 1.5, 0.1) },
+
+      // Strategy 2: Bounding box center and half-ranges
+      {
+        h: (xMin + xMax) / 2,
+        k: (yMin + yMax) / 2,
+        a: Math.max((xMax - xMin) / 2, 0.1),
+        b: Math.max((yMax - yMin) / 2, 0.1),
+      },
+
+      // Strategy 3: First 4 points direct fit (if possible)
+      (() => {
+        if (n >= 4) {
+          const x1 = points[0].x;
+          const y2 = points[1].y;
+          const x3 = points[2].x;
+          const y4 = points[3].y;
+
+          // Simple heuristic: use extremes for initial guess
+          const h = (x1 + x3) / 2;
+          const k = (y2 + y4) / 2;
+          const a = Math.max(Math.abs(x3 - x1) / 2, 0.1);
+          const b = Math.max(Math.abs(y4 - y2) / 2, 0.1);
+          return { h, k, a, b };
+        }
+        return { h: xMean, k: yMean, a: stdX, b: stdY };
+      })(),
+
+      // Strategy 4: Larger initialization to capture spread
+      { h: xMean, k: yMean, a: Math.max(stdX * 2.5, 0.5), b: Math.max(stdY * 2.5, 0.5) },
+    ];
+
+    for (const init of initStrategies) {
+      let { h, k, a, b } = init;
+
+      // Levenberg-Marquardt optimization with higher iteration count
+      const maxIterations = 300;
+      let lambda = 0.001;
+      let prevError = Infinity;
+
+      for (let iter = 0; iter < maxIterations; iter++) {
+        // Calculate residuals and Jacobian
+        const residuals: number[] = [];
+        const jacobian: number[][] = [];
+
+        for (let i = 0; i < points.length; i++) {
+          const xi = points[i].x;
+          const yi = points[i].y;
+
+          // Residual: (xi-h)²/a² + (yi-k)²/b² - 1
+          const dx = xi - h;
+          const dy = yi - k;
+          const a2 = a * a;
+          const b2 = b * b;
+          const r = (dx * dx) / a2 + (dy * dy) / b2 - 1;
+          residuals.push(r);
+
+          // Jacobian derivatives with respect to [h, k, a, b]
+          const dh = (-2 * dx) / a2;
+          const dk = (-2 * dy) / b2;
+          const da = (-2 * (dx * dx)) / (a2 * a);
+          const db = (-2 * (dy * dy)) / (b2 * b);
+
+          jacobian.push([dh, dk, da, db]);
+        }
+
+        // Calculate current error
+        const currentError = residuals.reduce((sum, r) => sum + r * r, 0) / n;
+
+        // Check convergence
+        if (currentError < 1e-14 || Math.abs(prevError - currentError) < 1e-12) {
+          break;
+        }
+
+        // Build normal equations: (J^T * J + λI) * Δp = -J^T * r
+        const JtJ = new Array(4).fill(0).map(() => new Array(4).fill(0));
+        const JtR = new Array(4).fill(0);
+
+        // Compute J^T * J and J^T * r
+        for (let i = 0; i < jacobian.length; i++) {
+          for (let j = 0; j < 4; j++) {
+            JtR[j] += jacobian[i][j] * residuals[i];
+            for (let k = 0; k < 4; k++) {
+              JtJ[j][k] += jacobian[i][j] * jacobian[i][k];
+            }
+          }
+        }
+
+        // Add Levenberg-Marquardt damping
+        for (let i = 0; i < 4; i++) {
+          JtJ[i][i] += lambda;
+        }
+
+        try {
+          // Solve for parameter update
+          const delta = solveLinearSystem4x4(
+            JtJ,
+            JtR.map(x => -x)
+          );
+
+          // Update parameters with constraints
+          const newH = h + delta[0];
+          const newK = k + delta[1];
+          const newA = Math.max(0.01, a + delta[2]); // Ensure positive semi-axes
+          const newB = Math.max(0.01, b + delta[3]);
+
+          // Evaluate error with new parameters
+          let newError = 0;
+          for (let i = 0; i < points.length; i++) {
+            const xi = points[i].x;
+            const yi = points[i].y;
+            const dx = xi - newH;
+            const dy = yi - newK;
+            const r = (dx * dx) / (newA * newA) + (dy * dy) / (newB * newB) - 1;
+            newError += r * r;
+          }
+          newError /= n;
+
+          if (newError < currentError) {
+            // Accept the update
+            h = newH;
+            k = newK;
+            a = newA;
+            b = newB;
+            lambda = Math.max(lambda * 0.3, 1e-15);
+            prevError = currentError;
+          } else {
+            // Reject the update, increase damping
+            lambda = Math.min(lambda * 3, 1e3);
+            if (lambda > 1e2) {
+              break; // Avoid infinite damping
+            }
+          }
+        } catch (e) {
+          // Matrix singular, increase damping or break
+          lambda = Math.min(lambda * 5, 1e3);
+          if (lambda > 1e2) {
+            break;
+          }
+        }
+      }
+
+      // Calculate final error for this initialization
+      let finalError = 0;
+      for (let i = 0; i < points.length; i++) {
+        const xi = points[i].x;
+        const yi = points[i].y;
+        const dx = xi - h;
+        const dy = yi - k;
+        const r = (dx * dx) / (a * a) + (dy * dy) / (b * b) - 1;
+        finalError += r * r;
+      }
+      finalError = Math.sqrt(finalError / n); // RMS error
+
+      // Keep the best result across all initializations
+      if (
+        finalError < bestError &&
+        isFinite(h) &&
+        isFinite(k) &&
+        isFinite(a) &&
+        isFinite(b) &&
+        a > 0 &&
+        b > 0
+      ) {
+        bestError = finalError;
+        bestH = h;
+        bestK = k;
+        bestA = a;
+        bestB = b;
+      }
+    }
+
+    // Verify we have a valid solution
+    if (
+      !isFinite(bestH) ||
+      !isFinite(bestK) ||
+      !isFinite(bestA) ||
+      !isFinite(bestB) ||
+      bestA <= 0 ||
+      bestB <= 0
+    ) {
+      throw new Error('No valid ellipse solution found');
+    }
+
+    // Calculate R-squared for the best fit
+    const rSquared = calculateEllipseRSquared(points, bestH, bestK, bestA, bestB);
+
+    // Build equation string
+    let equation = '(x';
+    if (Math.abs(bestH) > 1e-10) {
+      const hFormatted = formatCoefficient(-bestH, true, useFractions, 6);
+      if (hFormatted !== '') {
+        equation += hFormatted;
+      }
+    }
+    equation += ')²/';
+    equation += formatCoefficient(bestA, false, useFractions, 6) + '²';
+    equation += ' + (y';
+    if (Math.abs(bestK) > 1e-10) {
+      const kFormatted = formatCoefficient(-bestK, true, useFractions, 6);
+      if (kFormatted !== '') {
+        equation += kFormatted;
+      }
+    }
+    equation += ')²/';
+    equation += formatCoefficient(bestB, false, useFractions, 6) + '²';
+    equation += ' = 1';
+
+    return {
+      coefficients: { h: bestH, k: bestK, a: bestA, b: bestB },
+      equation,
+      rSquared,
+    };
+  } catch (e) {
+    return {
+      coefficients: {},
+      equation: '',
+      error: `Unable to fit ellipse: ${e instanceof Error ? e.message : 'points may not form a valid ellipse'}`,
+    };
+  }
+}
+
+// Helper function to solve 4x4 linear system using Gaussian elimination with partial pivoting
+function solveLinearSystem4x4(A: number[][], b: number[]): number[] {
+  const n = 4;
+  const augmented = A.map((row, i) => [...row, b[i]]);
+
+  // Forward elimination with partial pivoting
+  for (let i = 0; i < n; i++) {
+    // Find pivot
+    let maxRow = i;
+    for (let k = i + 1; k < n; k++) {
+      if (Math.abs(augmented[k][i]) > Math.abs(augmented[maxRow][i])) {
+        maxRow = k;
+      }
+    }
+
+    // Swap rows if needed
+    if (maxRow !== i) {
+      [augmented[i], augmented[maxRow]] = [augmented[maxRow], augmented[i]];
+    }
+
+    // Check for near-singular matrix
+    if (Math.abs(augmented[i][i]) < 1e-14) {
+      throw new Error('Nearly singular matrix in linear system');
+    }
+
+    // Eliminate column
+    for (let k = i + 1; k < n; k++) {
+      const factor = augmented[k][i] / augmented[i][i];
+      for (let j = i; j <= n; j++) {
+        augmented[k][j] -= factor * augmented[i][j];
+      }
+    }
+  }
+
+  // Back substitution
+  const x = new Array(n).fill(0);
+  for (let i = n - 1; i >= 0; i--) {
+    x[i] = augmented[i][n];
+    for (let j = i + 1; j < n; j++) {
+      x[i] -= augmented[i][j] * x[j];
+    }
+    x[i] /= augmented[i][i];
+  }
+
+  return x;
+}
+
+function calculateEllipseRSquared(
+  points: DataPoint[],
+  h: number,
+  k: number,
+  a: number,
+  b: number
+): number {
+  try {
+    // For ellipse fitting, R² measures the proportion of variance explained by the ellipse model
+    // We use the distance-based approach: compare distances to ellipse vs distances to centroid
+
+    const n = points.length;
+    if (n === 0) return 0;
+
+    // Calculate centroid of the data points
+    const xMean = points.reduce((sum, p) => sum + p.x, 0) / n;
+    const yMean = points.reduce((sum, p) => sum + p.y, 0) / n;
+
+    // Calculate total sum of squares (TSS): sum of squared distances from points to centroid
+    let tss = 0;
+    for (const point of points) {
+      const dx = point.x - xMean;
+      const dy = point.y - yMean;
+      tss += dx * dx + dy * dy;
+    }
+
+    // Calculate residual sum of squares (RSS): sum of squared distances from points to ellipse
+    let rss = 0;
+    for (const point of points) {
+      // Calculate distance from point to ellipse boundary
+      const distance = distanceToEllipse(point.x, point.y, h, k, a, b);
+      rss += distance * distance;
+    }
+
+    // Handle edge cases
+    if (tss === 0) {
+      // All points are at the same location
+      return rss === 0 ? 1 : 0;
+    }
+
+    // Calculate R²: 1 - (RSS / TSS)
+    const r2 = 1 - rss / tss;
+
+    // Clamp between 0 and 1 for meaningful interpretation
+    return Math.max(0, Math.min(1, r2));
+  } catch (e) {
+    return 0;
+  }
+}
+
+// Helper function to calculate distance from a point to an ellipse boundary
+function distanceToEllipse(
+  px: number,
+  py: number,
+  h: number,
+  k: number,
+  a: number,
+  b: number
+): number {
+  try {
+    // Translate point to ellipse-centered coordinates
+    const x = px - h;
+    const y = py - k;
+
+    // For axis-aligned ellipse: (x/a)² + (y/b)² = 1
+    // Use iterative method to find closest point on ellipse boundary
+
+    // Quick check if point is at center
+    if (Math.abs(x) < 1e-10 && Math.abs(y) < 1e-10) {
+      return Math.min(a, b); // Distance to closest point on boundary
+    }
+
+    // Use parameterization: ellipse point = (a*cos(t), b*sin(t))
+    // Find angle t that minimizes distance to (x, y)
+
+    let bestDistance = Infinity;
+    const numSamples = 100; // Sample points around the ellipse
+
+    for (let i = 0; i < numSamples; i++) {
+      const t = (2 * Math.PI * i) / numSamples;
+      const ex = a * Math.cos(t);
+      const ey = b * Math.sin(t);
+      const distance = Math.sqrt((x - ex) ** 2 + (y - ey) ** 2);
+      bestDistance = Math.min(bestDistance, distance);
+    }
+
+    // Refine with Newton's method around the best sample
+    const bestIdx = Array.from({ length: numSamples }, (_, i) => i).reduce((bestI, i) => {
+      const t = (2 * Math.PI * i) / numSamples;
+      const ex = a * Math.cos(t);
+      const ey = b * Math.sin(t);
+      const distance = Math.sqrt((x - ex) ** 2 + (y - ey) ** 2);
+
+      const bestT = (2 * Math.PI * bestI) / numSamples;
+      const bestEx = a * Math.cos(bestT);
+      const bestEy = b * Math.sin(bestT);
+      const bestDist = Math.sqrt((x - bestEx) ** 2 + (y - bestEy) ** 2);
+
+      return distance < bestDist ? i : bestI;
+    }, 0);
+
+    let t = (2 * Math.PI * bestIdx) / numSamples;
+
+    // Newton's method refinement (few iterations)
+    for (let iter = 0; iter < 5; iter++) {
+      const cos_t = Math.cos(t);
+      const sin_t = Math.sin(t);
+      const ex = a * cos_t;
+      const ey = b * sin_t;
+
+      // Derivative of squared distance with respect to t
+      const dex_dt = -a * sin_t;
+      const dey_dt = b * cos_t;
+      const f_prime = 2 * (ex - x) * dex_dt + 2 * (ey - y) * dey_dt;
+
+      // Second derivative
+      const d2ex_dt2 = -a * cos_t;
+      const d2ey_dt2 = -b * sin_t;
+      const f_double_prime =
+        2 * (dex_dt * dex_dt + (ex - x) * d2ex_dt2) + 2 * (dey_dt * dey_dt + (ey - y) * d2ey_dt2);
+
+      if (Math.abs(f_double_prime) > 1e-10) {
+        t = t - f_prime / f_double_prime;
+      }
+    }
+
+    // Calculate final distance
+    const ex = a * Math.cos(t);
+    const ey = b * Math.sin(t);
+    return Math.sqrt((x - ex) ** 2 + (y - ey) ** 2);
+  } catch (e) {
+    // Fallback: simple approximation using ellipse equation
+    const ellipseValue = ((px - h) / a) ** 2 + ((py - k) / b) ** 2;
+    if (ellipseValue <= 1) {
+      return 0; // Point is inside ellipse
+    } else {
+      // Approximate distance for points outside
+      return Math.sqrt(ellipseValue - 1) * Math.min(a, b);
+    }
+  }
 }

@@ -16,6 +16,18 @@
     </div>
   </div>
 
+  <!-- Toast notification for copy feedback -->
+  <div v-if="showCopyToast" class="toast-notification">
+    <div class="toast-content">
+      <div class="toast-header">
+        <strong>📋 Points Copied!</strong>
+      </div>
+      <div class="toast-body">
+        {{ copyToastMessage }}
+      </div>
+    </div>
+  </div>
+
   <div v-if="showDialog" class="dialog-overlay" @click="closeDialog">
     <div class="dialog-content" @click.stop>
       <h3>Load Points</h3>
@@ -55,6 +67,8 @@ const emit = defineEmits<{
 
 const showDialog = ref(false);
 const pointsText = ref('');
+const showCopyToast = ref(false);
+const copyToastMessage = ref('');
 
 async function copyPoints() {
   if (props.dataPoints.length === 0) return;
@@ -63,6 +77,7 @@ async function copyPoints() {
 
   try {
     await navigator.clipboard.writeText(pointsText);
+    showCopyFeedback(pointsText);
   } catch (err) {
     // Fallback for older browsers
     const textArea = document.createElement('textarea');
@@ -71,7 +86,25 @@ async function copyPoints() {
     textArea.select();
     document.execCommand('copy');
     document.body.removeChild(textArea);
+    showCopyFeedback(pointsText);
   }
+}
+
+function showCopyFeedback(copiedText: string) {
+  const lines = copiedText.split('\n');
+  const pointCount = lines.length;
+
+  // Show preview of copied points (max 3 lines)
+  const preview = lines.slice(0, 3).join('\n');
+  const hasMore = lines.length > 3;
+
+  copyToastMessage.value = `${pointCount} point${pointCount === 1 ? '' : 's'} copied:\n${preview}${hasMore ? '\n...' : ''}`;
+  showCopyToast.value = true;
+
+  // Auto-hide after 3 seconds
+  setTimeout(() => {
+    showCopyToast.value = false;
+  }, 3000);
 }
 
 function showLoadDialog() {
@@ -303,5 +336,49 @@ input:checked + .slider:before {
 
 .cancel-button:hover {
   background: #7f8c8d;
+}
+
+/* Toast Notification Styles */
+.toast-notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 1100;
+  animation: slideInRight 0.3s ease-out;
+}
+
+.toast-content {
+  background: #27ae60;
+  color: white;
+  padding: 16px 20px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  max-width: 300px;
+  min-width: 200px;
+}
+
+.toast-header {
+  font-size: 0.95em;
+  margin-bottom: 8px;
+}
+
+.toast-body {
+  font-size: 0.85em;
+  font-family: monospace;
+  line-height: 1.3;
+  opacity: 0.9;
+  white-space: pre-line;
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
 }
 </style>
