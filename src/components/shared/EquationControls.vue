@@ -35,12 +35,7 @@
         Enter points in the format: x,y (one point per line)
         <br />Example : <br />0,1 <br />1,4
       </p>
-      <textarea
-        v-model="pointsText"
-        class="points-textarea"
-        placeholder="0,1&#10;1,4"
-        rows="6"
-      ></textarea>
+      <textarea v-model="pointsText" class="points-textarea" placeholder="0,1&#10;1,4" rows="6"></textarea>
       <div class="dialog-buttons">
         <button @click="loadPoints" class="dialog-button load-button">Load</button>
         <button @click="closeDialog" class="dialog-button cancel-button">Cancel</button>
@@ -79,7 +74,6 @@ async function copyPoints() {
     await navigator.clipboard.writeText(pointsText);
     showCopyFeedback(pointsText);
   } catch (err) {
-    // Fallback for older browsers
     const textArea = document.createElement('textarea');
     textArea.value = pointsText;
     document.body.appendChild(textArea);
@@ -94,14 +88,12 @@ function showCopyFeedback(copiedText: string) {
   const lines = copiedText.split('\n');
   const pointCount = lines.length;
 
-  // Show preview of copied points (max 3 lines)
   const preview = lines.slice(0, 3).join('\n');
   const hasMore = lines.length > 3;
 
   copyToastMessage.value = `${pointCount} point${pointCount === 1 ? '' : 's'} copied:\n${preview}${hasMore ? '\n...' : ''}`;
   showCopyToast.value = true;
 
-  // Auto-hide after 3 seconds
   setTimeout(() => {
     showCopyToast.value = false;
   }, 3000);
@@ -208,15 +200,15 @@ function loadPoints() {
   border-radius: 50%;
 }
 
-input:checked + .slider {
+input:checked+.slider {
   background-color: #2196f3;
 }
 
-input:focus + .slider {
+input:focus+.slider {
   box-shadow: 0 0 1px #2196f3;
 }
 
-input:checked + .slider:before {
+input:checked+.slider:before {
   -webkit-transform: translateX(21px);
   -ms-transform: translateX(21px);
   transform: translateX(21px);
