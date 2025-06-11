@@ -2,11 +2,22 @@
   <main class="main-container">
     <h1>Curve Solver</h1>
     <TabContainer :tabs="tabs" :activeTab="selectedEquationType" @tab-change="handleTabChange" />
-    <component :is="currentEquationComponent" :dataPoints="dataPoints" :result="currentResult"
-      :equationLabel="currentEquationLabel" :equationTooltip="currentEquationTooltip" :requiredPoints="requiredPoints"
-      :useFractions="useFractions" @update-points="updatePoints" @add-point="addPoint" @remove-point="removePoint"
-      @clear-points="clearPoints" @toggle-fractions="toggleFractions" @solve-equation="solveApproximationEquation"
-      @load-points="loadPoints" />
+    <component
+      :is="currentEquationComponent"
+      :dataPoints="dataPoints"
+      :result="currentResult"
+      :equationLabel="currentEquationLabel"
+      :equationTooltip="currentEquationTooltip"
+      :requiredPoints="requiredPoints"
+      :useFractions="useFractions"
+      @update-points="updatePoints"
+      @add-point="addPoint"
+      @remove-point="removePoint"
+      @clear-points="clearPoints"
+      @toggle-fractions="toggleFractions"
+      @solve-equation="solveApproximationEquation"
+      @load-points="loadPoints"
+    />
   </main>
 </template>
 
