@@ -35,7 +35,12 @@
         Enter points in the format: x,y (one point per line)
         <br />Example : <br />0,1 <br />1,4
       </p>
-      <textarea v-model="pointsText" class="points-textarea" placeholder="0,1&#10;1,4" rows="6"></textarea>
+      <textarea
+        v-model="pointsText"
+        class="points-textarea"
+        placeholder="0,1&#10;1,4"
+        rows="6"
+      ></textarea>
       <div class="dialog-buttons">
         <button @click="loadPoints" class="dialog-button load-button">Load</button>
         <button @click="closeDialog" class="dialog-button cancel-button">Cancel</button>
@@ -200,15 +205,15 @@ function loadPoints() {
   border-radius: 50%;
 }
 
-input:checked+.slider {
+input:checked + .slider {
   background-color: #2196f3;
 }
 
-input:focus+.slider {
+input:focus + .slider {
   box-shadow: 0 0 1px #2196f3;
 }
 
-input:checked+.slider:before {
+input:checked + .slider:before {
   -webkit-transform: translateX(21px);
   -ms-transform: translateX(21px);
   transform: translateX(21px);
