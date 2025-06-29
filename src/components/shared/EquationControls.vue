@@ -11,16 +11,18 @@
       <button @click="copyPoints" class="action-button" :disabled="dataPoints.length === 0">
         Copy Points
       </button>
+      <button @click="copyToDesmos" class="action-button" :disabled="!desmosEquation">
+        Copy to Desmos
+      </button>
       <button @click="showLoadDialog" class="action-button">Load Points</button>
       <button @click="$emit('clear-points')" class="action-button">Clear Points</button>
     </div>
   </div>
 
-  <!-- Toast notification for copy feedback -->
   <div v-if="showCopyToast" class="toast-notification">
     <div class="toast-content">
       <div class="toast-header">
-        <strong>📋 Points Copied!</strong>
+        <strong>📋 Copied!</strong>
       </div>
       <div class="toast-body">
         {{ copyToastMessage }}
@@ -55,6 +57,8 @@ import { ref } from 'vue';
 interface Props {
   useFractions: boolean;
   dataPoints: Array<{ x: number; y: number }>;
+  equation?: string;
+  desmosEquation?: string;
 }
 
 const props = defineProps<Props>();
@@ -77,7 +81,7 @@ async function copyPoints() {
 
   try {
     await navigator.clipboard.writeText(pointsText);
-    showCopyFeedback(pointsText);
+    showCopyFeedback(pointsText, 'points');
   } catch (err) {
     const textArea = document.createElement('textarea');
     textArea.value = pointsText;
@@ -85,20 +89,22 @@ async function copyPoints() {
     textArea.select();
     document.execCommand('copy');
     document.body.removeChild(textArea);
-    showCopyFeedback(pointsText);
+    showCopyFeedback(pointsText, 'points');
   }
 }
 
-function showCopyFeedback(copiedText: string) {
-  const lines = copiedText.split('\n');
-  const pointCount = lines.length;
+function showCopyFeedback(copiedText: string, type: 'points' | 'equation') {
+  if (type === 'points') {
+    const lines = copiedText.split('\n');
+    const pointCount = lines.length;
+    const preview = lines.slice(0, 3).join('\n');
+    const hasMore = lines.length > 3;
+    copyToastMessage.value = `${pointCount} point${pointCount === 1 ? '' : 's'} copied:\n${preview}${hasMore ? '\n...' : ''}`;
+  } else {
+    copyToastMessage.value = `Equation copied to clipboard:\n${copiedText.substring(0, 50)}${copiedText.length > 50 ? '...' : ''}`;
+  }
 
-  const preview = lines.slice(0, 3).join('\n');
-  const hasMore = lines.length > 3;
-
-  copyToastMessage.value = `${pointCount} point${pointCount === 1 ? '' : 's'} copied:\n${preview}${hasMore ? '\n...' : ''}`;
   showCopyToast.value = true;
-
   setTimeout(() => {
     showCopyToast.value = false;
   }, 3000);
@@ -144,6 +150,23 @@ function loadPoints() {
   }
 
   closeDialog();
+}
+
+async function copyToDesmos() {
+  if (!props.desmosEquation) return;
+
+  try {
+    await navigator.clipboard.writeText(props.desmosEquation);
+    showCopyFeedback(props.desmosEquation, 'equation');
+  } catch (err) {
+    const textArea = document.createElement('textarea');
+    textArea.value = props.desmosEquation;
+    document.body.appendChild(textArea);
+    textArea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textArea);
+    showCopyFeedback(props.desmosEquation, 'equation');
+  }
 }
 </script>
 
@@ -248,7 +271,45 @@ input:checked + .slider:before {
   background: #bdc3c7;
 }
 
-/* Dialog Styles */
+.toast-notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.toast-content {
+  background: #2c3e50;
+  color: white;
+  padding: 16px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  max-width: 300px;
+}
+
+.toast-header {
+  margin-bottom: 8px;
+  font-size: 1.1em;
+}
+
+.toast-body {
+  font-size: 0.9em;
+  line-height: 1.4;
+  white-space: pre-line;
+}
+
 .dialog-overlay {
   position: fixed;
   top: 0;
@@ -333,49 +394,5 @@ input:checked + .slider:before {
 
 .cancel-button:hover {
   background: #7f8c8d;
-}
-
-/* Toast Notification Styles */
-.toast-notification {
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  z-index: 1100;
-  animation: slideInRight 0.3s ease-out;
-}
-
-.toast-content {
-  background: #27ae60;
-  color: white;
-  padding: 16px 20px;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  max-width: 300px;
-  min-width: 200px;
-}
-
-.toast-header {
-  font-size: 0.95em;
-  margin-bottom: 8px;
-}
-
-.toast-body {
-  font-size: 0.85em;
-  font-family: monospace;
-  line-height: 1.3;
-  opacity: 0.9;
-  white-space: pre-line;
-}
-
-@keyframes slideInRight {
-  from {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
 }
 </style>

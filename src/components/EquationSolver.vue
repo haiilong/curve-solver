@@ -15,6 +15,8 @@
     <EquationControls
       :useFractions="useFractions"
       :dataPoints="dataPoints"
+      :equation="result"
+      :desmosEquation="desmosResult"
       @toggle-fractions="$emit('toggle-fractions')"
       @clear-points="$emit('clear-points')"
       @load-points="$emit('load-points', $event)"
@@ -51,6 +53,7 @@ interface Props {
   requiredPoints: number;
   useFractions: boolean;
   isExactEquation?: boolean;
+  desmosResult: string;
 }
 
 withDefaults(defineProps<Props>(), {
@@ -61,9 +64,9 @@ defineEmits<{
   'update-points': [points: DataPoint[]];
   'add-point': [x: number, y: number];
   'remove-point': [index: number];
-  'clear-points': [];
-  'toggle-fractions': [];
   'solve-equation': [];
+  'toggle-fractions': [];
+  'clear-points': [];
   'load-points': [points: DataPoint[]];
 }>();
 </script>

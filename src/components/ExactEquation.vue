@@ -7,6 +7,7 @@
     :requiredPoints="requiredPoints"
     :useFractions="useFractions"
     :isExactEquation="true"
+    :desmosResult="desmosResult"
     @update-points="$emit('update-points', $event)"
     @clear-points="$emit('clear-points')"
     @toggle-fractions="$emit('toggle-fractions')"
@@ -25,6 +26,7 @@ interface Props {
   equationTooltip?: string;
   requiredPoints: number;
   useFractions: boolean;
+  desmosResult: string;
 }
 
 defineProps<Props>();

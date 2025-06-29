@@ -6,6 +6,7 @@
       :is="currentEquationComponent"
       :dataPoints="dataPoints"
       :result="currentResult"
+      :desmosResult="currentDesmosResult"
       :equationLabel="currentEquationLabel"
       :equationTooltip="currentEquationTooltip"
       :requiredPoints="requiredPoints"
@@ -118,6 +119,19 @@ const currentResult = computed(() => {
     return displayResult;
   }
 });
+
+const currentDesmosResult = computed(() => {
+  if (isExactEquation.value) {
+    const result = solveEquation(selectedEquationType.value, dataPoints.value, useFractions.value);
+    return result.desmosEquation || '';
+  } else {
+    if (!approximationResult.value) {
+      return '';
+    }
+    return approximationResult.value.desmosEquation || '';
+  }
+});
+
 const currentEquationLabel = computed(
   () => tabs.find(tab => tab.id === selectedEquationType.value)?.label || ''
 );
@@ -146,21 +160,9 @@ function removePoint(index: number): void {
   }
 }
 
-function clearPoints(): void {
-  dataPoints.value = [];
-  approximationResult.value = null;
-}
-
 function handleTabChange(tabId: string): void {
   selectedEquationType.value = tabId as EquationType;
   clearPoints();
-}
-
-function toggleFractions(): void {
-  useFractions.value = !useFractions.value;
-  if (!isExactEquation.value && approximationResult.value) {
-    solveApproximationEquation();
-  }
 }
 
 function solveApproximationEquation(): void {
@@ -168,6 +170,18 @@ function solveApproximationEquation(): void {
 
   const result = solveEquation(selectedEquationType.value, dataPoints.value, useFractions.value);
   approximationResult.value = result;
+}
+
+function clearPoints(): void {
+  dataPoints.value = [];
+  approximationResult.value = null;
+}
+
+function toggleFractions(): void {
+  useFractions.value = !useFractions.value;
+  if (!isExactEquation.value && approximationResult.value) {
+    solveApproximationEquation();
+  }
 }
 
 function loadPoints(points: DataPoint[]): void {

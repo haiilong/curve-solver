@@ -9,6 +9,7 @@ export interface DataPoint {
 export interface SolverResult {
   coefficients: Record<string, number>;
   equation: string;
+  desmosEquation?: string;
   error?: string;
   rSquared?: number;
 }
@@ -57,6 +58,7 @@ export function solveEquation(
     return {
       coefficients: {},
       equation: '',
+      desmosEquation: '',
       error: e instanceof Error ? e.message : 'Unknown error',
     };
   }
@@ -72,6 +74,7 @@ function solveExactEquation(
     return {
       coefficients: {},
       equation: '',
+      desmosEquation: '',
       error: 'Duplicate points detected. Each point must be unique for exact equations.',
     };
   }
@@ -88,7 +91,7 @@ function solveExactEquation(
     case ExactEquationType.CONIC:
       return solveConic(points, useFractions);
     default:
-      return { coefficients: {}, equation: '', error: 'Unknown equation type' };
+      return { coefficients: {}, equation: '', desmosEquation: '', error: 'Unknown equation type' };
   }
 }
 
@@ -124,6 +127,7 @@ function solvePolynomial(
     return {
       coefficients: {},
       equation: '',
+      desmosEquation: '',
       error: `Need exactly ${requiredPoints} points for ${equationType} equation`,
     };
   }
@@ -174,6 +178,7 @@ function solvePolynomial(
       return {
         coefficients: {},
         equation: '',
+        desmosEquation: '',
         error: `Unable to solve ${equationType} equation - points may be collinear or invalid`,
       };
     }
@@ -181,12 +186,14 @@ function solvePolynomial(
     return {
       coefficients,
       equation: buildPolynomialEquation(terms, useFractions),
+      desmosEquation: buildPolynomialEquation(terms, useFractions),
     };
   } catch (e) {
     const equationType = degree === 1 ? 'linear' : degree === 2 ? 'quadratic' : 'cubic';
     return {
       coefficients: {},
       equation: '',
+      desmosEquation: '',
       error: `Unable to solve ${equationType} equation - points may be collinear or invalid`,
     };
   }
@@ -213,6 +220,7 @@ function solveCircle(points: DataPoint[], useFractions: boolean = true): SolverR
     return {
       coefficients: {},
       equation: '',
+      desmosEquation: '',
       error: 'Need exactly 3 points for circle equation',
     };
   }
@@ -244,6 +252,7 @@ function solveCircle(points: DataPoint[], useFractions: boolean = true): SolverR
       return {
         coefficients: {},
         equation: '',
+        desmosEquation: '',
         error: 'Points do not form a valid circle - points may be collinear',
       };
     }
@@ -255,35 +264,56 @@ function solveCircle(points: DataPoint[], useFractions: boolean = true): SolverR
       return {
         coefficients: {},
         equation: '',
+        desmosEquation: '',
         error: 'Unable to solve circle equation - invalid coefficients',
       };
     }
 
     let equation = '(x';
     if (Math.abs(h) > 1e-10) {
-      const hFormatted = formatCoefficient(-h, true, useFractions);
+      const hFormatted = formatCoefficient(-h, true, useFractions, 6);
       if (hFormatted !== '') {
         equation += hFormatted;
       }
     }
     equation += ')² + (y';
     if (Math.abs(k) > 1e-10) {
-      const kFormatted = formatCoefficient(-k, true, useFractions);
+      const kFormatted = formatCoefficient(-k, true, useFractions, 6);
       if (kFormatted !== '') {
         equation += kFormatted;
       }
     }
     equation += ')² = ';
-    equation += formatCoefficient(r, false, useFractions) + '²';
+    equation += formatCoefficient(r, false, useFractions, 6) + '²';
+
+    let desmosEquation = '(x';
+    if (Math.abs(h) > 1e-10) {
+      const hFormatted = formatCoefficient(-h, true, useFractions, 6);
+      if (hFormatted !== '') {
+        desmosEquation += hFormatted;
+      }
+    }
+    desmosEquation += ')² + (y';
+    if (Math.abs(k) > 1e-10) {
+      const kFormatted = formatCoefficient(-k, true, useFractions, 6);
+      if (kFormatted !== '') {
+        desmosEquation += kFormatted;
+      }
+    }
+    desmosEquation += ')² = ';
+    desmosEquation += formatCoefficient(r, false, useFractions, 6) + '²';
 
     return {
       coefficients,
       equation,
+      desmosEquation,
+      rSquared,
     };
   } catch (e) {
     return {
       coefficients: {},
       equation: '',
+      desmosEquation: '',
       error: 'Unable to solve circle equation - points may be collinear',
     };
   }
@@ -295,6 +325,7 @@ function solveConic(points: DataPoint[], useFractions: boolean = true): SolverRe
     return {
       coefficients: {},
       equation: '',
+      desmosEquation: '',
       error: 'Need exactly 5 points for conic equation',
     };
   }
@@ -341,21 +372,25 @@ function solveConic(points: DataPoint[], useFractions: boolean = true): SolverRe
       return {
         coefficients: {},
         equation: '',
+        desmosEquation: '',
         error: 'Unable to solve conic equation - invalid coefficients',
       };
     }
 
     let equation = '';
+    let desmosEquation = '';
 
     // Build Conic equation: Ax² + Bxy + Cy² + Dx + Ey + F = 0
     if (Math.abs(A) > 1e-10) {
       equation += formatCoefficient(A, false, useFractions, 7) + 'x²';
+      desmosEquation += formatCoefficient(A, false, useFractions, 7) + 'x²';
     }
 
     if (Math.abs(B) > 1e-10) {
       const BFormatted = formatCoefficient(B, equation.length > 0, useFractions, 7);
       if (BFormatted !== '') {
         equation += BFormatted + 'xy';
+        desmosEquation += BFormatted + 'xy';
       }
     }
 
@@ -363,6 +398,7 @@ function solveConic(points: DataPoint[], useFractions: boolean = true): SolverRe
       const CFormatted = formatCoefficient(C, equation.length > 0, useFractions, 7);
       if (CFormatted !== '') {
         equation += CFormatted + 'y²';
+        desmosEquation += CFormatted + 'y²';
       }
     }
 
@@ -370,6 +406,7 @@ function solveConic(points: DataPoint[], useFractions: boolean = true): SolverRe
       const DFormatted = formatCoefficient(D, equation.length > 0, useFractions, 7);
       if (DFormatted !== '') {
         equation += DFormatted + 'x';
+        desmosEquation += DFormatted + 'x';
       }
     }
 
@@ -377,6 +414,7 @@ function solveConic(points: DataPoint[], useFractions: boolean = true): SolverRe
       const EFormatted = formatCoefficient(E, equation.length > 0, useFractions, 7);
       if (EFormatted !== '') {
         equation += EFormatted + 'y';
+        desmosEquation += EFormatted + 'y';
       }
     }
 
@@ -384,15 +422,19 @@ function solveConic(points: DataPoint[], useFractions: boolean = true): SolverRe
       const FFormatted = formatCoefficient(F, equation.length > 0, useFractions, 7);
       if (FFormatted !== '') {
         equation += FFormatted;
+        desmosEquation += FFormatted;
       }
     }
 
     equation += ' = 0';
+    desmosEquation += ' = 0';
 
     if (equation.startsWith(' + ')) {
       equation = equation.substring(3);
+      desmosEquation = desmosEquation.substring(3);
     } else if (equation.startsWith(' - ')) {
       equation = '-' + equation.substring(3);
+      desmosEquation = '-' + desmosEquation.substring(3);
     }
 
     // Add conic type to the equation display
@@ -401,11 +443,13 @@ function solveConic(points: DataPoint[], useFractions: boolean = true): SolverRe
     return {
       coefficients,
       equation: finalEquation,
+      desmosEquation,
     };
   } catch (e) {
     return {
       coefficients: {},
       equation: '',
+      desmosEquation: '',
       error: 'Unable to solve conic equation - points may be invalid',
     };
   }
@@ -417,6 +461,7 @@ function solveSine(points: DataPoint[], useFractions: boolean = true): SolverRes
     return {
       coefficients: {},
       equation: '',
+      desmosEquation: '',
       error: 'Need at least 3 points for sine approximation',
     };
   }
@@ -561,6 +606,7 @@ function solveSine(points: DataPoint[], useFractions: boolean = true): SolverRes
 
     // Build formatted equation with clean formatting
     let equation = 'y = ';
+    let desmosEquation = 'y = ';
 
     // a * sin(bx + c) term
     const aFormatted = formatCoefficient(a, false, useFractions);
@@ -569,35 +615,45 @@ function solveSine(points: DataPoint[], useFractions: boolean = true): SolverRes
 
     if (Math.abs(a - 1) < 1e-10) {
       equation += 'sin(';
+      desmosEquation += 'sin(';
     } else if (Math.abs(a + 1) < 1e-10) {
       equation += '-sin(';
+      desmosEquation += '-sin(';
     } else {
       equation += `${aFormatted} * sin(`;
+      desmosEquation += `${aFormatted} * sin(`;
     }
 
     if (Math.abs(b - 1) < 1e-10) {
       equation += 'x';
+      desmosEquation += 'x';
     } else if (Math.abs(b + 1) < 1e-10) {
       equation += '-x';
+      desmosEquation += '-x';
     } else {
       equation += `${bFormatted}x`;
+      desmosEquation += `${bFormatted}x`;
     }
 
     if (Math.abs(c) > 1e-10) {
       equation += cFormatted;
+      desmosEquation += cFormatted;
     }
 
     equation += ')';
+    desmosEquation += ')';
 
     // d constant term
     if (Math.abs(d) > 1e-10) {
       const dFormatted = formatCoefficient(d, true, useFractions);
       equation += dFormatted;
+      desmosEquation += dFormatted;
     }
 
     return {
       coefficients: { a, b, c, d },
       equation,
+      desmosEquation,
       rSquared,
     };
   } catch (e) {
@@ -609,6 +665,7 @@ function solveSine(points: DataPoint[], useFractions: boolean = true): SolverRes
     return {
       coefficients: { a: yRange / 2, b: (2 * Math.PI) / xRange, c: 0, d: yMean },
       equation: `y = ${formatCoefficient(yRange / 2, false, useFractions)} * sin(${formatCoefficient((2 * Math.PI) / xRange, false, useFractions)}x) + ${formatCoefficient(yMean, false, useFractions)}`,
+      desmosEquation: `y = ${formatCoefficient(yRange / 2, false, useFractions)} * sin(${formatCoefficient((2 * Math.PI) / xRange, false, useFractions)}x) + ${formatCoefficient(yMean, false, useFractions)}`,
       rSquared: 0,
     };
   }
@@ -620,6 +677,7 @@ function solveLog(points: DataPoint[], useFractions: boolean = true): SolverResu
     return {
       coefficients: {},
       equation: '',
+      desmosEquation: '',
       error: 'Need at least 3 points for logarithmic approximation',
     };
   }
@@ -633,6 +691,7 @@ function solveLog(points: DataPoint[], useFractions: boolean = true): SolverResu
       return {
         coefficients: {},
         equation: '',
+        desmosEquation: '',
         error: 'Logarithmic fit requires all x values to be positive',
       };
     }
@@ -654,6 +713,7 @@ function solveLog(points: DataPoint[], useFractions: boolean = true): SolverResu
       return {
         coefficients: { a: 1, b: 1, c: 0, d: yMean },
         equation: `y = ln(x) + ${formatCoefficient(yMean, false, useFractions)}`,
+        desmosEquation: `y = ln(x) + ${formatCoefficient(yMean, false, useFractions)}`,
         rSquared: 0,
       };
     }
@@ -758,6 +818,7 @@ function solveLog(points: DataPoint[], useFractions: boolean = true): SolverResu
 
     // Build formatted equation with proper coefficient handling
     let equation = 'y = ';
+    let desmosEquation = 'y = ';
 
     // a * ln(bx + c) term
     const aFormatted = formatCoefficient(a, false, useFractions);
@@ -766,35 +827,45 @@ function solveLog(points: DataPoint[], useFractions: boolean = true): SolverResu
 
     if (Math.abs(a - 1) < 1e-10) {
       equation += 'ln(';
+      desmosEquation += 'ln(';
     } else if (Math.abs(a + 1) < 1e-10) {
       equation += '-ln(';
+      desmosEquation += '-ln(';
     } else {
       equation += `${aFormatted} * ln(`;
+      desmosEquation += `${aFormatted} * ln(`;
     }
 
     if (Math.abs(b - 1) < 1e-10) {
       equation += 'x';
+      desmosEquation += 'x';
     } else if (Math.abs(b + 1) < 1e-10) {
       equation += '-x';
+      desmosEquation += '-x';
     } else {
       equation += `${bFormatted}x`;
+      desmosEquation += `${bFormatted}x`;
     }
 
     if (Math.abs(c) > 1e-10) {
       equation += cFormatted;
+      desmosEquation += cFormatted;
     }
 
     equation += ')';
+    desmosEquation += ')';
 
     // d constant term
     if (Math.abs(d) > 1e-10) {
       const dFormatted = formatCoefficient(d, true, useFractions);
       equation += dFormatted;
+      desmosEquation += dFormatted;
     }
 
     return {
       coefficients: { a, b, c, d },
       equation,
+      desmosEquation,
       rSquared,
     };
   } catch (e) {
@@ -817,6 +888,7 @@ function solveLog(points: DataPoint[], useFractions: boolean = true): SolverResu
       return {
         coefficients: { a, b: 1, c: 0, d },
         equation: `y = ${formatCoefficient(a, false, useFractions)} * ln(x) + ${formatCoefficient(d, false, useFractions)}`,
+        desmosEquation: `y = ${formatCoefficient(a, false, useFractions)} * ln(x) + ${formatCoefficient(d, false, useFractions)}`,
         rSquared: 0,
       };
     } catch (e2) {
@@ -825,6 +897,7 @@ function solveLog(points: DataPoint[], useFractions: boolean = true): SolverResu
       return {
         coefficients: { a: 1, b: 1, c: 0, d: yMean },
         equation: `y = ln(x) + ${formatCoefficient(yMean, false, useFractions)}`,
+        desmosEquation: `y = ln(x) + ${formatCoefficient(yMean, false, useFractions)}`,
         rSquared: 0,
       };
     }
@@ -837,6 +910,7 @@ function solveExponential(points: DataPoint[], useFractions: boolean = true): So
     return {
       coefficients: {},
       equation: '',
+      desmosEquation: '',
       error: 'Need at least 3 points for exponential approximation',
     };
   }
@@ -1025,6 +1099,7 @@ function solveExponential(points: DataPoint[], useFractions: boolean = true): So
 
     // Build formatted equation with clean coefficient handling
     let equation = 'y = ';
+    let desmosEquation = 'y = ';
 
     // a * e^(bx + c) term
     const aFormatted = formatCoefficient(a, false, useFractions);
@@ -1033,35 +1108,45 @@ function solveExponential(points: DataPoint[], useFractions: boolean = true): So
 
     if (Math.abs(a - 1) < 1e-10) {
       equation += 'e^(';
+      desmosEquation += 'e^(';
     } else if (Math.abs(a + 1) < 1e-10) {
       equation += '-e^(';
+      desmosEquation += '-e^(';
     } else {
       equation += `${aFormatted} * e^(`;
+      desmosEquation += `${aFormatted} * e^(`;
     }
 
     if (Math.abs(b - 1) < 1e-10) {
       equation += 'x';
+      desmosEquation += 'x';
     } else if (Math.abs(b + 1) < 1e-10) {
       equation += '-x';
+      desmosEquation += '-x';
     } else {
       equation += `${bFormatted}x`;
+      desmosEquation += `${bFormatted}x`;
     }
 
     if (Math.abs(c) > 1e-10) {
       equation += cFormatted;
+      desmosEquation += cFormatted;
     }
 
     equation += ')';
+    desmosEquation += ')';
 
     // d constant term
     if (Math.abs(d) > 1e-10) {
       const dFormatted = formatCoefficient(d, true, useFractions);
       equation += dFormatted;
+      desmosEquation += dFormatted;
     }
 
     return {
       coefficients: { a, b, c, d },
       equation,
+      desmosEquation,
       rSquared,
     };
   } catch (e) {
@@ -1081,6 +1166,7 @@ function solveExponential(points: DataPoint[], useFractions: boolean = true): So
     return {
       coefficients: { a, b, c: 0, d },
       equation: `y = ${formatCoefficient(a, false, useFractions)} * e^(${formatCoefficient(b, false, useFractions)}x) + ${formatCoefficient(d, false, useFractions)}`,
+      desmosEquation: `y = ${formatCoefficient(a, false, useFractions)} * e^(${formatCoefficient(b, false, useFractions)}x) + ${formatCoefficient(d, false, useFractions)}`,
       rSquared: 0,
     };
   }
@@ -1111,7 +1197,7 @@ function solveApproximationEquation(
     case ApproximationEquationType.ELLIPSE:
       return solveEllipseApproximation(points, useFractions);
     default:
-      return { coefficients: {}, equation: '', error: 'Unknown equation type' };
+      return { coefficients: {}, equation: '', desmosEquation: '', error: 'Unknown equation type' };
   }
 }
 
@@ -1221,6 +1307,7 @@ function solveEllipseApproximation(
     return {
       coefficients: {},
       equation: '',
+      desmosEquation: '',
       error: 'Need at least 4 points for ellipse approximation',
     };
   }
@@ -1258,6 +1345,7 @@ function solveEllipseApproximation(
 
     const rSquared = calculateEllipseRSquared(points, h, k, a, b);
 
+    // Build equation string in original format
     let equation = '(x';
     if (Math.abs(h) > 1e-10) {
       const hFormatted = formatCoefficient(-h, true, useFractions, 6);
@@ -1278,15 +1366,38 @@ function solveEllipseApproximation(
     equation += formatCoefficient(b, false, useFractions, 6) + '²';
     equation += ' = 1';
 
+    // Build equation string in LaTeX format for Desmos
+    let desmosEquation = '\\frac{\\left(x';
+    if (Math.abs(h) > 1e-10) {
+      const hFormatted = formatCoefficient(-h, true, useFractions, 6);
+      if (hFormatted !== '') {
+        desmosEquation += hFormatted;
+      }
+    }
+    desmosEquation += '\\right)^{2}}{';
+    desmosEquation += formatCoefficient(a, false, useFractions, 6) + '^{2}}';
+    desmosEquation += ' + \\frac{\\left(y';
+    if (Math.abs(k) > 1e-10) {
+      const kFormatted = formatCoefficient(-k, true, useFractions, 6);
+      if (kFormatted !== '') {
+        desmosEquation += kFormatted;
+      }
+    }
+    desmosEquation += '\\right)^{2}}{';
+    desmosEquation += formatCoefficient(b, false, useFractions, 6) + '^{2}}';
+    desmosEquation += ' = 1';
+
     return {
       coefficients: { h, k, a, b },
       equation,
+      desmosEquation,
       rSquared,
     };
   } catch (e) {
     return {
       coefficients: {},
       equation: '',
+      desmosEquation: '',
       error: 'Unable to fit ellipse to the given points',
     };
   }
@@ -1298,6 +1409,7 @@ function solveEllipseAlgebraic(points: DataPoint[], useFractions: boolean = true
     return {
       coefficients: {},
       equation: '',
+      desmosEquation: '',
       error: 'Need at least 4 points for ellipse approximation',
     };
   }
@@ -1517,7 +1629,7 @@ function solveEllipseAlgebraic(points: DataPoint[], useFractions: boolean = true
     // Calculate R-squared for the best fit
     const rSquared = calculateEllipseRSquared(points, bestH, bestK, bestA, bestB);
 
-    // Build equation string
+    // Build equation string in original format
     let equation = '(x';
     if (Math.abs(bestH) > 1e-10) {
       const hFormatted = formatCoefficient(-bestH, true, useFractions, 6);
@@ -1538,15 +1650,38 @@ function solveEllipseAlgebraic(points: DataPoint[], useFractions: boolean = true
     equation += formatCoefficient(bestB, false, useFractions, 6) + '²';
     equation += ' = 1';
 
+    // Build equation string in LaTeX format for Desmos
+    let desmosEquation = '\\frac{\\left(x';
+    if (Math.abs(bestH) > 1e-10) {
+      const hFormatted = formatCoefficient(-bestH, true, useFractions, 6);
+      if (hFormatted !== '') {
+        desmosEquation += hFormatted;
+      }
+    }
+    desmosEquation += '\\right)^{2}}{';
+    desmosEquation += formatCoefficient(bestA, false, useFractions, 6) + '^{2}}';
+    desmosEquation += ' + \\frac{\\left(y';
+    if (Math.abs(bestK) > 1e-10) {
+      const kFormatted = formatCoefficient(-bestK, true, useFractions, 6);
+      if (kFormatted !== '') {
+        desmosEquation += kFormatted;
+      }
+    }
+    desmosEquation += '\\right)^{2}}{';
+    desmosEquation += formatCoefficient(bestB, false, useFractions, 6) + '^{2}}';
+    desmosEquation += ' = 1';
+
     return {
       coefficients: { h: bestH, k: bestK, a: bestA, b: bestB },
       equation,
+      desmosEquation,
       rSquared,
     };
   } catch (e) {
     return {
       coefficients: {},
       equation: '',
+      desmosEquation: '',
       error: `Unable to fit ellipse: ${e instanceof Error ? e.message : 'points may not form a valid ellipse'}`,
     };
   }
